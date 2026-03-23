@@ -1,4 +1,4 @@
-import { X, AlertTriangle, MessageSquare, Radio, CheckCircle2, Clock, Video } from 'lucide-react';
+import { X, AlertTriangle, MessageSquare, Radio, CheckCircle2, Clock, Video, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 
 interface Alert {
@@ -16,9 +16,18 @@ interface AlertsDrawerProps {
   onAcknowledge: (id: string) => void;
   onAddNote: (id: string, note: string) => void;
   onRadioOperator: (id: string) => void;
+  isCollapsed: boolean;
+  onToggle: () => void;
 }
 
-export function AlertsDrawer({ alerts, onAcknowledge, onAddNote, onRadioOperator }: AlertsDrawerProps) {
+export function AlertsDrawer({ 
+  alerts, 
+  onAcknowledge, 
+  onAddNote, 
+  onRadioOperator,
+  isCollapsed,
+  onToggle
+}: AlertsDrawerProps) {
   const [noteInputs, setNoteInputs] = useState<Record<string, string>>({});
   const [expandedAlertId, setExpandedAlertId] = useState<string | null>(null);
 
@@ -43,13 +52,29 @@ export function AlertsDrawer({ alerts, onAcknowledge, onAddNote, onRadioOperator
   const unacknowledgedCount = alerts.filter(a => !a.acknowledged).length;
 
   return (
-    <div className="w-[600px] bg-card border-l-2 border-border shadow-[var(--elevation-lg)] flex flex-col h-full">
+    <div className="relative flex flex-col h-full overflow-hidden">
+      {/* Collapse Toggle Button */}
+      <button
+        onClick={onToggle}
+        className={`
+          absolute -left-3 top-6 w-6 h-6 bg-card border border-border rounded-full flex items-center justify-center
+          text-muted-foreground hover:text-foreground shadow-sm z-50 transition-all duration-300
+          ${isCollapsed ? 'rotate-180' : 'rotate-0'}
+        `}
+        title={isCollapsed ? "Expand Alerts" : "Collapse Alerts"}
+      >
+        <ChevronRight className="w-4 h-4" />
+      </button>
+
       {/* Header */}
-      <div className="px-6 py-4 bg-muted border-b-2 border-border flex items-center justify-between flex-shrink-0">
+      <div className={`
+        px-6 py-4 bg-muted border-b-2 border-border flex items-center flex-shrink-0 transition-all duration-300
+        ${isCollapsed ? 'justify-center px-0' : 'justify-between'}
+      `}>
         <div className="flex items-center gap-3">
-          <AlertTriangle className="w-5 h-5 text-foreground" />
-          <h3 className="text-foreground">Active Alerts</h3>
-          {unacknowledgedCount > 0 && (
+          <AlertTriangle className={`w-5 h-5 text-foreground shrink-0 ${isCollapsed ? 'mx-auto' : ''}`} />
+          {!isCollapsed && <h3 className="text-foreground whitespace-nowrap">Active Alerts</h3>}
+          {(unacknowledgedCount > 0 && !isCollapsed) && (
             <div className="px-3 py-1 bg-foreground text-white rounded-full">
               <span className="font-[family-name:var(--font-family)] font-[var(--font-weight-semibold)]" style={{ fontSize: 'var(--text-sm)' }}>
                 {unacknowledgedCount}
@@ -59,8 +84,20 @@ export function AlertsDrawer({ alerts, onAcknowledge, onAddNote, onRadioOperator
         </div>
       </div>
 
+      {/* Collapsed Indicator (Active Count) */}
+      {isCollapsed && unacknowledgedCount > 0 && (
+        <div className="absolute top-12 left-1/2 -translate-x-1/2 mt-2">
+          <div className="w-8 h-8 bg-foreground text-white rounded-full flex items-center justify-center shadow-lg animate-pulse">
+            <span className="font-bold text-xs">{unacknowledgedCount}</span>
+          </div>
+        </div>
+      )}
+
       {/* Alerts List */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+      <div className={`
+        flex-1 overflow-y-auto p-6 space-y-4 transition-all duration-300
+        ${isCollapsed ? 'opacity-0 pointer-events-none' : 'opacity-100'}
+      `}>
         {alerts.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <CheckCircle2 className="w-16 h-16 text-muted-foreground mb-4" />

@@ -41,6 +41,7 @@ export default function App() {
   const [showDiagnostics, setShowDiagnostics] = useState(false);
   const [showReports, setShowReports] = useState(false);
   const [showSafetyEscalation, setShowSafetyEscalation] = useState(false);
+  const [isAlertsCollapsed, setIsAlertsCollapsed] = useState(false);
 
   const monitorRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<HTMLDivElement>(null);
@@ -194,8 +195,11 @@ export default function App() {
       />
 
       <main className="flex-1 flex overflow-hidden">
-        {/* Left Column (3/4ths) - Monitoring & Dashboard */}
-        <div className="w-[75%] flex flex-col h-full border-r-2 border-border overflow-hidden relative">
+        {/* Left Column (Main Content) */}
+        <div className={`
+          flex flex-col h-full border-r-2 border-border overflow-hidden relative transition-all duration-300 ease-in-out
+          ${isAlertsCollapsed ? 'flex-1' : 'w-[75%]'}
+        `}>
         {/* Header - Workflow 1 (Asset Specific) */}
         {(activeView === 'live' || activeView === 'historical' || activeView === 'trends') && (
           <AssetHeader
@@ -329,13 +333,18 @@ export default function App() {
         )}
       </div>
 
-      {/* Right Column (1/4th) - Active Alerts Sidebar */}
-      <div className="w-[25%] h-full flex flex-col bg-muted/20">
+      {/* Right Column (Active Alerts Sidebar) */}
+      <div className={`
+        h-full flex flex-col bg-muted/20 transition-all duration-300 ease-in-out
+        ${isAlertsCollapsed ? 'w-[72px]' : 'w-[25%]'}
+      `}>
         <AlertsDrawer
           alerts={alerts}
           onAcknowledge={handleAcknowledge}
           onAddNote={handleAddNote}
           onRadioOperator={handleRadioOperator}
+          isCollapsed={isAlertsCollapsed}
+          onToggle={() => setIsAlertsCollapsed(!isAlertsCollapsed)}
         />
       </div>
     </main>
