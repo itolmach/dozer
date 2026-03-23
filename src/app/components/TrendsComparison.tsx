@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { InlineCADDesignView } from './InlineCADDesignView';
 import { GeospatialDeviationMonitor } from './GeospatialDeviationMonitor';
-import { BarChart3, TrendingUp, DraftingCompass, Layers, Calendar, CalendarDays, CalendarRange } from 'lucide-react';
+import { PredictivePlanningAlerts } from './PredictivePlanningAlerts';
+import { BarChart3, TrendingUp, DraftingCompass, Layers, Calendar, CalendarDays, CalendarRange, Zap } from 'lucide-react';
 
 interface TrendsComparisonProps {
   assetName: string;
@@ -102,6 +103,20 @@ export function TrendsComparison({ assetName }: TrendsComparisonProps) {
             </div>
           </div>
           <GeospatialDeviationMonitor />
+        </div>
+
+        {/* 3. Predictive Risk Modeling Module */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 px-2">
+            <div className="p-2 bg-primary/10 rounded-lg">
+              <Zap className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-foreground">Predictive Risk Modeling</h3>
+              <p className="text-sm text-muted-foreground font-[family-name:var(--font-family)]">AI-powered risk forecasting and operational anomaly detection</p>
+            </div>
+          </div>
+          <PredictivePlanningAlerts />
         </div>
       </div>
     </div>

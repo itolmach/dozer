@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { ProductionMetrics } from './ProductionMetrics';
 import { InlineMapView } from './InlineMapView';
 import { PreShiftReview } from './PreShiftReview';
+import { ProductionVelocity } from './ProductionVelocity';
 
 
 interface VolumeData {
@@ -189,6 +190,11 @@ export function HistoricalAnalysis({ onScrollToPlan, onScrollToMap, onScrollToVi
             <ProductionMetrics />
           </div>
         )}
+
+        {/* 2.5 Production Velocity Module */}
+        <div className="mb-6">
+          <ProductionVelocity />
+        </div>
 
         {/* 3. Volume Moved - Real-Time Running Total */}
         <div className="bg-gradient-to-br from-primary/5 to-primary/10 rounded-[var(--radius-card)] border-2 border-primary/20 p-6">

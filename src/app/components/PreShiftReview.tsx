@@ -2,7 +2,6 @@ import { Video, FileText, CheckCircle2, AlertTriangle, MoreVertical, Copy, Check
 import { useState } from 'react';
 import { SafetyEventsFeed } from './SafetyEventsFeed';
 import { MaintenanceAlerts } from './MaintenanceAlerts';
-import { PredictiveAlerts } from './PredictiveAlerts';
 import { UnifiedMapView } from './UnifiedMapView';
 import { TimelineSeeker } from './TimelineSeeker';
 
@@ -262,11 +261,6 @@ export function PreShiftReview({ videoRef, assetName, assetLocation }: PreShiftR
         {/* Row 4: Maintenance Alerts */}
         <div className="w-full">
            <MaintenanceAlerts />
-        </div>
-
-        {/* Row 5: Predictive Alerts */}
-        <div className="w-full">
-           <PredictiveAlerts />
         </div>
       </div>
     </div>

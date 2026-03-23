@@ -22,7 +22,6 @@ import { GlobalActionsToolbar } from './components/GlobalActionsToolbar';
 import { FloatingMonitor } from './components/FloatingMonitor';
 import { Sidebar } from './components/Sidebar';
 import { InlineMapView } from './components/InlineMapView';
-import { InlineCADDesignView } from './components/InlineCADDesignView';
 import { Radio, StopCircle, MessageSquare, AlertCircle, Wrench, MapPin as MapPinIcon, Pencil, X, LayoutDashboard,
   CheckCircle2,
   AlertTriangle,
@@ -296,21 +295,10 @@ export default function App() {
                   />
                 </div>
 
-                {/* Production Velocity Module */}
-                <div className="mb-6">
-                  <ProductionVelocity />
-                </div>
 
                 {/* Production Metrics - Today */}
                 <div className="mb-6">
                   <ProductionMetricsToday />
-                </div>
-
-                {/* GNSS vs CAD Design Grade Module */}
-                <div className="mb-6" ref={planRef}>
-                  <InlineCADDesignView 
-                    assetName={assetData.name}
-                  />
                 </div>
 
                 {/* Predictive Alerts - Workflow 3 */}
