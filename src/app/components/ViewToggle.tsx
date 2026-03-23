@@ -12,8 +12,8 @@ export function ViewToggle({ activeView, onViewChange, onOpenCAD, onOpenMap, onO
   return (
     <div className="bg-card border-b border-border px-8 py-3">
       <div className="flex justify-between items-center">
-        {/* View Toggle Tabs — centered within the remaining space */}
-        <div className="flex-1 flex justify-center">
+        {/* View Toggle Tabs — left-aligned with header content */}
+        <div className="flex justify-start">
           <div className="inline-flex rounded-full bg-muted/50 p-1 gap-1" role="tablist">
             <button
               role="tab"
@@ -60,8 +60,8 @@ export function ViewToggle({ activeView, onViewChange, onOpenCAD, onOpenMap, onO
                 }
               `}
             >
-              <span className="font-bold text-sm tracking-tight text-foreground/90">Trends &amp; Comparison</span>
-              <span className="text-xs text-muted-foreground/70 font-medium">Analytics</span>
+              <span className="font-bold text-sm tracking-tight text-foreground/90">Analytics</span>
+              <span className="text-xs text-muted-foreground/70 font-medium">Performance Trends</span>
             </button>
           </div>
         </div>

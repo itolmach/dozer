@@ -7,15 +7,15 @@ import {
   X, 
   TrendingUp, 
   TrendingDown,
-  Ruler,
-  Layers,
+  Briefcase,
   AlertCircle,
   Clock,
   MapPin,
-  FileText,
   Camera,
   ArrowUpCircle,
-  ArrowDownCircle
+  ArrowDownCircle,
+  Clock3,
+  Timer
 } from 'lucide-react';
 
 interface DeviationEvent {
@@ -24,7 +24,7 @@ interface DeviationEvent {
   location: { lat: number; lng: number; elevation: number };
   deviationType: 'bedrock' | 'soft_soil' | 'water' | 'debris' | 'unknown';
   severity: 'minor' | 'moderate' | 'major';
-  verticalDeviation: number; // meters from design elevation
+  verticalDeviation: number; // Reinterpreted as schedule variance in days
   designElevation: number;
   actualElevation: number;
   status: 'monitoring' | 'warning' | 'confirmed' | 'resolved';
@@ -44,15 +44,14 @@ interface DesignChangeRequest {
   attachments: string[];
 }
 
-
 interface HeatMapZone {
   id: string;
   name: string;
-  designElevation: number;
-  currentElevation: number;
-  deviation: number; // positive = above grade, negative = below grade
+  designElevation: number; // % target
+  currentElevation: number; // % actual
+  deviation: number; // variance %
   percentComplete: number;
-  area: number; // square meters
+  area: number;
   status: 'ahead' | 'on-track' | 'behind';
 }
 
@@ -63,7 +62,7 @@ const mockDeviations: DeviationEvent[] = [
     location: { lat: 34.0522, lng: -118.2437, elevation: 142.3 },
     deviationType: 'bedrock',
     severity: 'major',
-    verticalDeviation: 0.82,
+    verticalDeviation: 3.5, // 3.5 days behind
     designElevation: 141.5,
     actualElevation: 142.32,
     status: 'confirmed',
@@ -75,7 +74,7 @@ const mockDeviations: DeviationEvent[] = [
     location: { lat: 34.0525, lng: -118.2440, elevation: 140.8 },
     deviationType: 'soft_soil',
     severity: 'moderate',
-    verticalDeviation: -0.45,
+    verticalDeviation: -1.2, // 1.2 days ahead
     designElevation: 141.0,
     actualElevation: 140.55,
     status: 'warning',
@@ -87,7 +86,7 @@ const mockDeviations: DeviationEvent[] = [
     location: { lat: 34.0520, lng: -118.2435, elevation: 139.2 },
     deviationType: 'unknown',
     severity: 'minor',
-    verticalDeviation: 0.15,
+    verticalDeviation: 0.5,
     designElevation: 139.0,
     actualElevation: 139.15,
     status: 'monitoring',
@@ -95,54 +94,53 @@ const mockDeviations: DeviationEvent[] = [
   }
 ];
 
-
 const mockHeatMapZones: HeatMapZone[] = [
   {
-    id: 'ZONE-A1',
-    name: 'Zone A-1 (North)',
-    designElevation: 142.0,
-    currentElevation: 142.1,
-    deviation: 0.1,
+    id: 'PRJ-ALPHA',
+    name: 'Project Alpha - Phase 1',
+    designElevation: 100,
+    currentElevation: 105,
+    deviation: 5,
     percentComplete: 95,
     area: 1250,
     status: 'ahead'
   },
   {
-    id: 'ZONE-A2',
-    name: 'Zone A-2 (Center)',
-    designElevation: 141.5,
-    currentElevation: 141.5,
-    deviation: 0.0,
+    id: 'PRJ-BETA',
+    name: 'North Perimeter Expansion',
+    designElevation: 100,
+    currentElevation: 100,
+    deviation: 0,
     percentComplete: 88,
     area: 1580,
     status: 'on-track'
   },
   {
-    id: 'ZONE-A3',
-    name: 'Zone A-3 (South)',
-    designElevation: 140.8,
-    currentElevation: 141.3,
-    deviation: 0.5,
+    id: 'PRJ-GAMMA',
+    name: 'Section 7B Utility Trench',
+    designElevation: 100,
+    currentElevation: 92,
+    deviation: -8,
     percentComplete: 62,
     area: 940,
     status: 'behind'
   },
   {
-    id: 'ZONE-B1',
-    name: 'Zone B-1 (East)',
-    designElevation: 139.5,
-    currentElevation: 139.2,
-    deviation: -0.3,
+    id: 'PRJ-DELTA',
+    name: 'Interstate 405 Drainage',
+    designElevation: 100,
+    currentElevation: 102,
+    deviation: 2,
     percentComplete: 78,
     area: 1120,
     status: 'on-track'
   },
   {
-    id: 'ZONE-B2',
-    name: 'Zone B-2 (West)',
-    designElevation: 138.9,
-    currentElevation: 139.7,
-    deviation: 0.8,
+    id: 'PRJ-EPSILON',
+    name: 'Southern Access Road',
+    designElevation: 100,
+    currentElevation: 85,
+    deviation: -15,
     percentComplete: 45,
     area: 1350,
     status: 'behind'
@@ -162,12 +160,10 @@ export function GeospatialDeviationMonitor() {
     attachments: []
   });
 
-  // Simulate monitoring → warning → confirmed progression
   useEffect(() => {
     const timer = setInterval(() => {
       setDeviations(prev => prev.map(dev => {
         if (dev.status === 'monitoring' && dev.telemetryConfidence > 85) {
-          // After 3 seconds of monitoring with high confidence, upgrade to warning
           const age = Date.now() - dev.timestamp.getTime();
           if (age > 3000) {
             return { ...dev, status: 'warning' as const };
@@ -182,11 +178,11 @@ export function GeospatialDeviationMonitor() {
 
   const getDeviationTypeLabel = (type: string) => {
     const labels: Record<string, string> = {
-      bedrock: 'Bedrock Encounter',
-      soft_soil: 'Soft Soil',
-      water: 'Water Intrusion',
-      debris: 'Debris/Obstruction',
-      unknown: 'Unknown Condition'
+      bedrock: 'Bedrock Delay',
+      soft_soil: 'Material Impediment',
+      water: 'Logistical Bottleneck',
+      debris: 'Site Obstruction',
+      unknown: 'Unforeseen Risk'
     };
     return labels[type] || type;
   };
@@ -224,7 +220,7 @@ export function GeospatialDeviationMonitor() {
     setChangeRequest({
       deviationId: deviation.id,
       requestedBy: 'Field Supervisor',
-      issue: `${getDeviationTypeLabel(deviation.deviationType)} detected at elevation ${deviation.actualElevation.toFixed(2)}m (Design: ${deviation.designElevation.toFixed(2)}m)`,
+      issue: `${getDeviationTypeLabel(deviation.deviationType)} detected at location ${deviation.location.lat.toFixed(4)}, ${deviation.location.lng.toFixed(4)}`,
       proposedSolution: '',
       urgency: deviation.severity === 'major' ? 'high' : deviation.severity === 'moderate' ? 'medium' : 'low',
       attachments: []
@@ -233,14 +229,12 @@ export function GeospatialDeviationMonitor() {
   };
 
   const handleSubmitChangeRequest = () => {
-    console.log('Submitting design change request:', {
+    console.log('Submitting schedule mitigation request:', {
       ...changeRequest,
-      id: `DCR-${Date.now()}`,
+      id: `SMR-${Date.now()}`,
       timestamp: new Date(),
       status: 'submitted'
     });
-    
-    // Reset form
     setShowChangeRequest(false);
     setChangeRequest({
       requestedBy: '',
@@ -261,156 +255,150 @@ export function GeospatialDeviationMonitor() {
       <div className="px-6 py-4 bg-muted border-b border-border">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Layers className="w-5 h-5 text-foreground" />
-            <h3 className="text-foreground">Geospatial Telemetry vs. 3D Design</h3>
+            <Briefcase className="w-5 h-5 text-foreground" />
+            <h3 className="text-foreground">Assignments</h3>
             {criticalDeviations.length > 0 && (
               <div className="px-3 py-1 bg-destructive rounded-full flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 text-white" />
                 <span className="font-[family-name:var(--font-family)] font-[var(--font-weight-semibold)] text-white" style={{ fontSize: 'var(--text-sm)' }}>
-                  {criticalDeviations.length} Critical
+                  {criticalDeviations.length} High Risk
                 </span>
               </div>
             )}
           </div>
           <div className="flex items-center gap-2">
             <span className="text-muted-foreground font-[family-name:var(--font-family)]" style={{ fontSize: 'var(--text-sm)' }}>
-              Last Update: {new Date().toLocaleTimeString()}
+              Operational Status: ACTIVE
             </span>
           </div>
         </div>
       </div>
 
       <div className="p-6">
-
-        {/* Heat Map - Vertical Progress vs Finish Grade */}
+        {/* Project Progress & Schedule Variance */}
         <div className="mb-6 bg-background rounded-[var(--radius-card)] border-2 border-border p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <Ruler className="w-5 h-5 text-foreground" />
-              <h4 className="text-foreground">Vertical Progress Heat Map</h4>
+              <Clock3 className="w-5 h-5 text-foreground" />
+              <h4 className="text-foreground">Project Progress &amp; Schedule Variance</h4>
             </div>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <ArrowUpCircle className="w-4 h-4 text-foreground" />
+                <TrendingUp className="w-4 h-4 text-color-success" />
                 <span className="text-muted-foreground font-[family-name:var(--font-family)]" style={{ fontSize: 'var(--text-sm)' }}>
-                  Above Grade
+                  Ahead of Schedule
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <ArrowDownCircle className="w-4 h-4 text-foreground" />
+                <TrendingDown className="w-4 h-4 text-destructive" />
                 <span className="text-muted-foreground font-[family-name:var(--font-family)]" style={{ fontSize: 'var(--text-sm)' }}>
-                  Below Grade
+                  Behind Schedule
                 </span>
               </div>
             </div>
           </div>
 
           <div className="space-y-3">
-            {heatMapZones.map((zone) => {
-              const isAboveGrade = zone.deviation > 0;
-              const deviationPercent = Math.min(Math.abs(zone.deviation) * 100, 100);
-              
-              return (
-                <div
-                  key={zone.id}
-                  className="bg-card rounded-[var(--radius-button)] border-2 border-border overflow-hidden"
-                >
-                  <div className="p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <div 
-                          className="w-4 h-4 rounded-full"
-                          style={{ backgroundColor: getZoneStatusColor(zone.status) }}
-                        ></div>
-                        <h5 className="text-foreground font-[family-name:var(--font-family)] font-[var(--font-weight-semibold)]" style={{ fontSize: 'var(--text-base)' }}>
-                          {zone.name}
-                        </h5>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
-                          <p className="text-muted-foreground font-[family-name:var(--font-family)]" style={{ fontSize: 'var(--text-xs)' }}>
-                            Design Elevation
-                          </p>
-                          <p className="text-foreground font-[family-name:var(--font-family)] font-[var(--font-weight-medium)]" style={{ fontSize: 'var(--text-sm)' }}>
-                            {zone.designElevation.toFixed(2)}m
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-muted-foreground font-[family-name:var(--font-family)]" style={{ fontSize: 'var(--text-xs)' }}>
-                            Current Elevation
-                          </p>
-                          <p className="text-foreground font-[family-name:var(--font-family)] font-[var(--font-weight-medium)]" style={{ fontSize: 'var(--text-sm)' }}>
-                            {zone.currentElevation.toFixed(2)}m
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-muted-foreground font-[family-name:var(--font-family)]" style={{ fontSize: 'var(--text-xs)' }}>
-                            Deviation
-                          </p>
-                          <div className="flex items-center gap-1">
-                            {isAboveGrade ? (
-                              <ArrowUpCircle className="w-4 h-4 text-foreground" />
-                            ) : zone.deviation < 0 ? (
-                              <ArrowDownCircle className="w-4 h-4 text-foreground" />
-                            ) : null}
-                            <p className={`font-[family-name:var(--font-family)] font-[var(--font-weight-semibold)] ${
-                              Math.abs(zone.deviation) > 0.5 ? 'text-destructive' : 'text-foreground'
-                            }`} style={{ fontSize: 'var(--text-sm)' }}>
-                              {zone.deviation >= 0 ? '+' : ''}{zone.deviation.toFixed(2)}m
-                            </p>
-                          </div>
-                        </div>
-                      </div>
+            {heatMapZones.map((zone) => (
+              <div
+                key={zone.id}
+                className="bg-card rounded-[var(--radius-button)] border-2 border-border overflow-hidden"
+              >
+                <div className="p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div 
+                        className="w-4 h-4 rounded-full"
+                        style={{ backgroundColor: getZoneStatusColor(zone.status) }}
+                      ></div>
+                      <h5 className="text-foreground font-[family-name:var(--font-family)] font-[var(--font-weight-semibold)]" style={{ fontSize: 'var(--text-base)' }}>
+                        {zone.name}
+                      </h5>
                     </div>
-
-                    {/* Progress Bar with Deviation Indicator */}
-                    <div className="relative">
-                      <div className="h-8 bg-muted rounded-[var(--radius-button)] overflow-hidden border border-border">
-                        <div 
-                          className="h-full bg-primary transition-all duration-500 flex items-center justify-end pr-2"
-                          style={{ width: `${zone.percentComplete}%` }}
-                        >
-                          <span className="text-white font-[family-name:var(--font-family)] font-[var(--font-weight-semibold)]" style={{ fontSize: 'var(--text-xs)' }}>
-                            {zone.percentComplete}%
-                          </span>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <p className="text-muted-foreground font-[family-name:var(--font-family)]" style={{ fontSize: 'var(--text-xs)' }}>
+                          Scheduled Target
+                        </p>
+                        <p className="text-foreground font-[family-name:var(--font-family)] font-[var(--font-weight-medium)]" style={{ fontSize: 'var(--text-sm)' }}>
+                          {zone.designElevation}%
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-muted-foreground font-[family-name:var(--font-family)]" style={{ fontSize: 'var(--text-xs)' }}>
+                          Actual Progress
+                        </p>
+                        <p className="text-foreground font-[family-name:var(--font-family)] font-[var(--font-weight-medium)]" style={{ fontSize: 'var(--text-sm)' }}>
+                          {zone.currentElevation}%
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-muted-foreground font-[family-name:var(--font-family)]" style={{ fontSize: 'var(--text-xs)' }}>
+                          Variance
+                        </p>
+                        <div className="flex items-center gap-1">
+                          {zone.deviation > 0 ? (
+                            <TrendingUp className="w-4 h-4 text-color-success" />
+                          ) : zone.deviation < 0 ? (
+                            <TrendingDown className="w-4 h-4 text-destructive" />
+                          ) : null}
+                          <p className={`font-[family-name:var(--font-family)] font-[var(--font-weight-semibold)] ${
+                            Math.abs(zone.deviation) > 10 ? 'text-destructive' : zone.deviation < 0 ? 'text-color-warning' : 'text-color-success'
+                          }`} style={{ fontSize: 'var(--text-sm)' }}>
+                            {zone.deviation >= 0 ? '+' : ''}{zone.deviation}%
+                          </p>
                         </div>
                       </div>
-                      {/* Deviation severity indicator overlay */}
-                      {Math.abs(zone.deviation) > 0.3 && (
-                        <div 
-                          className="absolute top-0 right-0 h-8 rounded-r-[var(--radius-button)] opacity-30"
-                          style={{ 
-                            width: `${deviationPercent}%`,
-                            backgroundColor: isAboveGrade ? 'var(--color-warning)' : 'var(--color-info)'
-                          }}
-                        ></div>
-                      )}
-                    </div>
-
-                    <div className="mt-2 flex items-center justify-between">
-                      <span className="text-muted-foreground font-[family-name:var(--font-family)]" style={{ fontSize: 'var(--text-xs)' }}>
-                        Area: {zone.area.toLocaleString()} m²
-                      </span>
-                      <span className="text-muted-foreground font-[family-name:var(--font-family)] uppercase" style={{ fontSize: 'var(--text-xs)' }}>
-                        Status: {zone.status.replace('-', ' ')}
-                      </span>
                     </div>
                   </div>
+
+                  {/* Progress Bar with Schedule Variance Indicator */}
+                  <div className="relative">
+                    <div className="h-8 bg-muted rounded-[var(--radius-button)] overflow-hidden border border-border">
+                      <div 
+                        className="h-full bg-primary transition-all duration-500 flex items-center justify-end pr-2"
+                        style={{ width: `${zone.percentComplete}%` }}
+                      >
+                        <span className="text-white font-[family-name:var(--font-family)] font-[var(--font-weight-semibold)]" style={{ fontSize: 'var(--text-xs)' }}>
+                          {zone.percentComplete}% COMPLETE
+                        </span>
+                      </div>
+                    </div>
+                    {/* Variance severity indicator overlay */}
+                    {Math.abs(zone.deviation) > 5 && (
+                      <div 
+                        className="absolute top-0 right-0 h-8 rounded-r-[var(--radius-button)] opacity-30"
+                        style={{ 
+                          width: `${Math.min(Math.abs(zone.deviation), 100)}%`,
+                          backgroundColor: zone.deviation > 0 ? 'var(--color-success)' : 'var(--destructive)'
+                        }}
+                      ></div>
+                    )}
+                  </div>
+
+                  <div className="mt-2 flex items-center justify-between">
+                    <span className="text-muted-foreground font-[family-name:var(--font-family)]" style={{ fontSize: 'var(--text-xs)' }}>
+                      Area: {zone.area.toLocaleString()} m²
+                    </span>
+                    <span className="text-muted-foreground font-[family-name:var(--font-family)] uppercase" style={{ fontSize: 'var(--text-xs)' }}>
+                      Status: {zone.status.replace('-', ' ')}
+                    </span>
+                  </div>
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Active Deviation Alerts */}
+        {/* Schedule Risk Alerts */}
         <div className="bg-background rounded-[var(--radius-card)] border-2 border-border p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-foreground" />
-              <h4 className="text-foreground">Active Deviation Alerts</h4>
+              <h4 className="text-foreground">Schedule Risk Alerts</h4>
               <div className="px-2 py-1 bg-muted rounded-full">
                 <span className="font-[family-name:var(--font-family)] font-[var(--font-weight-medium)] text-foreground" style={{ fontSize: 'var(--text-xs)' }}>
-                  {activeDeviations.length}
+                  {activeDeviations.length} Active
                 </span>
               </div>
             </div>
@@ -440,7 +428,6 @@ export function GeospatialDeviationMonitor() {
                           style={{ backgroundColor: getStatusColor(deviation.status) }}
                         >
                           {getDeviationTypeIcon(deviation.deviationType)}
-                          <span className="text-white ml-1"></span>
                         </div>
                         <div>
                           <h5 className="text-foreground font-[family-name:var(--font-family)] font-[var(--font-weight-semibold)] mb-1" style={{ fontSize: 'var(--text-base)' }}>
@@ -475,70 +462,66 @@ export function GeospatialDeviationMonitor() {
                       </div>
                     </div>
 
-                    {/* Monitoring Notice - Shows for first 3 seconds */}
-                    {isMonitoring && ageSeconds < 3 && (
+                    {/* Monitoring Notice */}
+                    {isMonitoring && (
                       <div className="mb-3 p-3 bg-primary/10 rounded-[var(--radius-button)] border border-primary/20">
                         <div className="flex items-center gap-2">
                           <Clock className="w-4 h-4 text-primary" />
                           <p className="text-foreground font-[family-name:var(--font-family)] font-[var(--font-weight-medium)]" style={{ fontSize: 'var(--text-sm)' }}>
-                            Monitoring deviation... Validating telemetry signal
+                            Validating risk data... Validating telemetry signal
                           </p>
-                        </div>
-                        <div className="mt-2 h-1 bg-muted rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-primary transition-all"
-                            style={{ width: `${(ageSeconds / 3) * 100}%` }}
-                          ></div>
                         </div>
                       </div>
                     )}
 
-                    {/* Deviation Details */}
+                    {/* Risk Details */}
                     <div className="grid grid-cols-4 gap-4 mb-3">
                       <div>
                         <p className="text-muted-foreground font-[family-name:var(--font-family)] mb-1" style={{ fontSize: 'var(--text-xs)' }}>
-                          Design Elevation
+                          Impact Type
                         </p>
-                        <p className="text-foreground font-[family-name:var(--font-family)] font-[var(--font-weight-medium)]" style={{ fontSize: 'var(--text-base)' }}>
-                          {deviation.designElevation.toFixed(2)}m
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground font-[family-name:var(--font-family)] mb-1" style={{ fontSize: 'var(--text-xs)' }}>
-                          Actual Elevation
-                        </p>
-                        <p className="text-foreground font-[family-name:var(--font-family)] font-[var(--font-weight-medium)]" style={{ fontSize: 'var(--text-base)' }}>
-                          {deviation.actualElevation.toFixed(2)}m
+                        <p className="text-foreground font-[family-name:var(--font-family)] font-[var(--font-weight-medium)]" style={{ fontSize: 'var(--text-sm)' }}>
+                          {deviation.verticalDeviation > 0 ? 'Delay' : 'Ahead'}
                         </p>
                       </div>
                       <div>
                         <p className="text-muted-foreground font-[family-name:var(--font-family)] mb-1" style={{ fontSize: 'var(--text-xs)' }}>
-                          Deviation
+                          Variance
                         </p>
-                        <p className="text-destructive font-[family-name:var(--font-family)] font-[var(--font-weight-semibold)]" style={{ fontSize: 'var(--text-base)' }}>
-                          {deviation.verticalDeviation >= 0 ? '+' : ''}{deviation.verticalDeviation.toFixed(2)}m
+                        <p className="text-foreground font-[family-name:var(--font-family)] font-[var(--font-weight-medium)]" style={{ fontSize: 'var(--text-sm)' }}>
+                          {Math.abs(deviation.verticalDeviation).toFixed(1)} Days
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground font-[family-name:var(--font-family)] mb-1" style={{ fontSize: 'var(--text-xs)' }}>
+                          Severity
+                        </p>
+                        <p className={`font-[family-name:var(--font-family)] font-[var(--font-weight-semibold)] uppercase ${
+                          deviation.severity === 'major' ? 'text-destructive' : 'text-foreground'
+                        }`} style={{ fontSize: 'var(--text-sm)' }}>
+                          {deviation.severity}
                         </p>
                       </div>
                       <div>
                         <p className="text-muted-foreground font-[family-name:var(--font-family)] mb-1" style={{ fontSize: 'var(--text-xs)' }}>
                           Confidence
                         </p>
-                        <p className="text-foreground font-[family-name:var(--font-family)] font-[var(--font-weight-medium)]" style={{ fontSize: 'var(--text-base)' }}>
+                        <p className="text-foreground font-[family-name:var(--font-family)] font-[var(--font-weight-medium)]" style={{ fontSize: 'var(--text-sm)' }}>
                           {deviation.telemetryConfidence}%
                         </p>
                       </div>
                     </div>
 
-                    {/* Action Buttons - Only show for confirmed deviations */}
+                    {/* Action Buttons */}
                     {deviation.status === 'confirmed' && (
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => handleCreateChangeRequest(deviation)}
                           className="flex-1 min-h-[60px] px-4 py-3 rounded-[var(--radius-button)] bg-primary text-white hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
                         >
-                          <FileText className="w-5 h-5" />
+                          <Timer className="w-5 h-5" />
                           <span className="font-[family-name:var(--font-family)] font-[var(--font-weight-medium)]" style={{ fontSize: 'var(--text-base)' }}>
-                            Create Design Change Request
+                            Request Schedule Mitigation
                           </span>
                         </button>
                         <button
@@ -561,7 +544,7 @@ export function GeospatialDeviationMonitor() {
                   All Clear
                 </p>
                 <p className="text-muted-foreground font-[family-name:var(--font-family)]" style={{ fontSize: 'var(--text-sm)' }}>
-                  No active deviations detected
+                  No active project risks detected
                 </p>
               </div>
             )}
@@ -569,16 +552,15 @@ export function GeospatialDeviationMonitor() {
         </div>
       </div>
 
-      {/* Design Change Request Modal */}
+      {/* Mitigation Request Modal */}
       {showChangeRequest && selectedDeviation && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="w-full max-w-3xl bg-card rounded-[var(--radius-card)] border-2 border-border shadow-[var(--elevation-lg)] max-h-[90vh] overflow-hidden flex flex-col">
-            {/* Modal Header */}
             <div className="px-6 py-4 bg-primary border-b border-border flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <FileText className="w-6 h-6 text-white" />
+                <Timer className="w-6 h-6 text-white" />
                 <h3 className="text-white font-[family-name:var(--font-family)] font-[var(--font-weight-semibold)]" style={{ fontSize: 'var(--text-xl)' }}>
-                  In-Field Design Change Request
+                  Project Schedule Mitigation Request
                 </h3>
               </div>
               <button
@@ -589,17 +571,15 @@ export function GeospatialDeviationMonitor() {
               </button>
             </div>
 
-            {/* Modal Content */}
             <div className="flex-1 overflow-y-auto p-6">
-              {/* Deviation Context */}
               <div className="mb-6 p-4 bg-muted rounded-[var(--radius-card)] border border-border">
                 <h4 className="text-foreground font-[family-name:var(--font-family)] font-[var(--font-weight-semibold)] mb-3" style={{ fontSize: 'var(--text-base)' }}>
-                  Deviation Context
+                  Risk Context
                 </h4>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-muted-foreground font-[family-name:var(--font-family)] mb-1" style={{ fontSize: 'var(--text-xs)' }}>
-                      Type
+                      Risk Type
                     </p>
                     <p className="text-foreground font-[family-name:var(--font-family)] font-[var(--font-weight-medium)]" style={{ fontSize: 'var(--text-sm)' }}>
                       {getDeviationTypeLabel(selectedDeviation.deviationType)}
@@ -613,28 +593,10 @@ export function GeospatialDeviationMonitor() {
                       {selectedDeviation.severity}
                     </p>
                   </div>
-                  <div>
-                    <p className="text-muted-foreground font-[family-name:var(--font-family)] mb-1" style={{ fontSize: 'var(--text-xs)' }}>
-                      Location
-                    </p>
-                    <p className="text-foreground font-[family-name:var(--font-family)] font-[var(--font-weight-medium)]" style={{ fontSize: 'var(--text-sm)' }}>
-                      {selectedDeviation.location.lat.toFixed(4)}°, {selectedDeviation.location.lng.toFixed(4)}°
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground font-[family-name:var(--font-family)] mb-1" style={{ fontSize: 'var(--text-xs)' }}>
-                      Vertical Deviation
-                    </p>
-                    <p className="text-destructive font-[family-name:var(--font-family)] font-[var(--font-weight-semibold)]" style={{ fontSize: 'var(--text-sm)' }}>
-                      {selectedDeviation.verticalDeviation >= 0 ? '+' : ''}{selectedDeviation.verticalDeviation.toFixed(2)}m
-                    </p>
-                  </div>
                 </div>
               </div>
 
-              {/* Request Form */}
               <div className="space-y-6">
-                {/* Requested By */}
                 <div>
                   <label className="block text-foreground font-[family-name:var(--font-family)] font-[var(--font-weight-medium)] mb-2" style={{ fontSize: 'var(--text-sm)' }}>
                     Requested By *
@@ -643,42 +605,25 @@ export function GeospatialDeviationMonitor() {
                     type="text"
                     value={changeRequest.requestedBy}
                     onChange={(e) => setChangeRequest({ ...changeRequest, requestedBy: e.target.value })}
-                    placeholder="Your name or role"
                     className="w-full min-h-[60px] px-4 py-3 bg-input-background border-2 border-border rounded-[var(--radius-input)] focus:border-ring focus:outline-none font-[family-name:var(--font-family)] text-foreground"
                     style={{ fontSize: 'var(--text-base)' }}
                   />
                 </div>
 
-                {/* Issue Description */}
                 <div>
                   <label className="block text-foreground font-[family-name:var(--font-family)] font-[var(--font-weight-medium)] mb-2" style={{ fontSize: 'var(--text-sm)' }}>
-                    Issue Description *
-                  </label>
-                  <textarea
-                    value={changeRequest.issue}
-                    onChange={(e) => setChangeRequest({ ...changeRequest, issue: e.target.value })}
-                    rows={3}
-                    className="w-full px-4 py-3 bg-input-background border-2 border-border rounded-[var(--radius-input)] focus:border-ring focus:outline-none font-[family-name:var(--font-family)] text-foreground resize-none"
-                    style={{ fontSize: 'var(--text-base)' }}
-                  />
-                </div>
-
-                {/* Proposed Solution */}
-                <div>
-                  <label className="block text-foreground font-[family-name:var(--font-family)] font-[var(--font-weight-medium)] mb-2" style={{ fontSize: 'var(--text-sm)' }}>
-                    Proposed Solution *
+                    Mitigation Strategy *
                   </label>
                   <textarea
                     value={changeRequest.proposedSolution}
                     onChange={(e) => setChangeRequest({ ...changeRequest, proposedSolution: e.target.value })}
-                    placeholder="Describe the recommended design adjustment or remediation approach..."
+                    placeholder="Describe the recommended schedule adjustment or remediation approach..."
                     rows={4}
                     className="w-full px-4 py-3 bg-input-background border-2 border-border rounded-[var(--radius-input)] focus:border-ring focus:outline-none font-[family-name:var(--font-family)] text-foreground resize-none"
                     style={{ fontSize: 'var(--text-base)' }}
                   />
                 </div>
 
-                {/* Urgency */}
                 <div>
                   <label className="block text-foreground font-[family-name:var(--font-family)] font-[var(--font-weight-medium)] mb-2" style={{ fontSize: 'var(--text-sm)' }}>
                     Urgency Level *
@@ -700,26 +645,9 @@ export function GeospatialDeviationMonitor() {
                     ))}
                   </div>
                 </div>
-
-                {/* Attachments Placeholder */}
-                <div>
-                  <label className="block text-foreground font-[family-name:var(--font-family)] font-[var(--font-weight-medium)] mb-2" style={{ fontSize: 'var(--text-sm)' }}>
-                    Attachments (Photos, Diagrams)
-                  </label>
-                  <div className="border-2 border-dashed border-border rounded-[var(--radius-button)] p-8 text-center hover:bg-accent/50 transition-colors cursor-pointer">
-                    <Camera className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-                    <p className="text-foreground font-[family-name:var(--font-family)] font-[var(--font-weight-medium)] mb-1" style={{ fontSize: 'var(--text-sm)' }}>
-                      Click to upload or drag and drop
-                    </p>
-                    <p className="text-muted-foreground font-[family-name:var(--font-family)]" style={{ fontSize: 'var(--text-xs)' }}>
-                      Photos, PDFs, or CAD files
-                    </p>
-                  </div>
-                </div>
               </div>
             </div>
 
-            {/* Modal Footer */}
             <div className="px-6 py-4 bg-muted border-t border-border flex items-center justify-between">
               <button
                 onClick={() => setShowChangeRequest(false)}
@@ -735,7 +663,7 @@ export function GeospatialDeviationMonitor() {
                 style={{ fontSize: 'var(--text-base)' }}
               >
                 <Send className="w-5 h-5" />
-                Submit to Office
+                Submit to Dispatch
               </button>
             </div>
           </div>

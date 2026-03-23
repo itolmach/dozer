@@ -1,4 +1,4 @@
-import { Video, FileText, CheckCircle2, AlertTriangle, MoreVertical, Copy, Check } from 'lucide-react';
+import { Video, FileText, CheckCircle2, AlertTriangle, MoreVertical, Copy, Check, Target, History } from 'lucide-react';
 import { useState } from 'react';
 import { SafetyEventsFeed } from './SafetyEventsFeed';
 import { MaintenanceAlerts } from './MaintenanceAlerts';
@@ -89,127 +89,14 @@ export function PreShiftReview({ videoRef, assetName, assetLocation }: PreShiftR
       </div>
 
       <div className="p-8 space-y-12 w-full">
-        {/* Row 0: Unified Map View - Safety Intelligence & Summary */}
-        <div className="bg-card rounded-[var(--radius-card)] border-2 border-border overflow-hidden shadow-[var(--elevation-sm)]">
-          <UnifiedMapView 
-            isInline={true}
-            assetName={assetName}
-            location={assetLocation}
-          />
-          
-          {/* Map Playback Seeker - Consistent with Video Monitoring */}
-          <div className="px-8 py-4 bg-muted/30 border-t-2 border-border">
-            <TimelineSeeker
-              duration={duration}
-              currentTime={currentTime}
-              onSeek={setCurrentTime}
-              onPlayPause={() => setIsPlaying(!isPlaying)}
-              isPlaying={isPlaying}
-              bookmarks={timelineBookmarks}
-              onAddBookmark={() => {}}
-              onUpdateBookmark={() => {}}
-            />
-          </div>
-          
-          {/* AI Safety Intelligence Summary - Consistent with InlineMonitoring layout */}
-          <div className="p-8 border-t-2 border-border bg-card/50 px-12">
-            <div className="flex items-start justify-between mb-6">
-              <div>
-                <h4 className="text-foreground font-semibold mb-2" style={{ fontSize: 'var(--text-xl)' }}>Safety Intelligence AI Summary</h4>
-                <p className="text-muted-foreground" style={{ fontSize: 'var(--text-base)' }}>
-                  Generated from real-time spatial telemetry and proximity correlation data
-                </p>
-              </div>
-              <button
-                onClick={handleCopySummary}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-border hover:bg-muted transition-all text-sm font-medium text-foreground shadow-sm"
-              >
-                {summaryCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                {summaryCopied ? 'Report Copied' : 'Copy Summary'}
-              </button>
-            </div>
 
-            <div className="flex gap-12">
-              <div className="flex-1">
-                <p className="text-foreground leading-relaxed mb-8" style={{ fontSize: 'var(--text-lg)' }}>
-                  Analysis of the current shift shows that the asset has been operating within moderate safety thresholds. 
-                  A single personnel proximity near-miss was detected in Zone B-2 at 08:42, which was immediately mitigated. 
-                  Production pressure slightly exceeded the safety correlation threshold during the mid-shift peak, though no further incidents occurred. 
-                  Recommended action: Brief the incoming crew on the new geofence boundaries in the expansion area.
-                </p>
-              </div>
-
-              <div className="w-[400px] border-l-2 border-border pl-12">
-                <h5 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-6">Critical Safety Markers</h5>
-                <div className="space-y-4">
-                  {keySafetyEvents.map((event, idx) => (
-                    <div key={idx} className="flex items-center gap-4 py-1 group cursor-pointer group hover:scale-[1.02] transition-transform">
-                      <span className="text-muted-foreground tabular-nums w-12 font-medium" style={{ fontSize: 'var(--text-sm)' }}>{event.time}</span>
-                      <div className={`w-2 h-2 rounded-full ${
-                        event.type === 'warning' ? 'bg-destructive' : 
-                        event.type === 'info' ? 'bg-primary' : 'bg-green-500'
-                      }`}></div>
-                      <span className="text-foreground group-hover:underline font-medium" style={{ fontSize: 'var(--text-base)' }}>{event.label}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Row 1: Automated Video Reports */}
-        <div ref={videoRef} className="bg-card rounded-[var(--radius-card)] border-2 border-border overflow-hidden shadow-[var(--elevation-sm)]">
-          <div className="px-6 py-4 bg-muted border-b border-border flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Video className="w-5 h-5 text-foreground" />
-              <h3 className="text-foreground">Automated Video Recaps</h3>
-            </div>
-            <span className="text-muted-foreground font-[family-name:var(--font-family)]" style={{ fontSize: 'var(--text-xs)' }}>
-              3 AVAILABLE
-            </span>
-          </div>
-
-          <div className="p-6 space-y-4">
-            {videoReports.map((report) => (
-              <button
-                key={report.id}
-                className="w-full bg-muted/30 rounded-[var(--radius-card)] border-2 border-border overflow-hidden hover:bg-muted/50 transition-all hover:scale-[1.01]"
-              >
-                <div className="flex gap-6 p-6">
-                  <div className="w-48 h-28 bg-[#1a1a1a] rounded-[var(--radius-button)] flex items-center justify-center flex-shrink-0 relative overflow-hidden group">
-                    <Video className="w-10 h-10 text-white/50 group-hover:scale-110 transition-transform" />
-                    <div className="absolute inset-0 bg-foreground/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                  </div>
-
-                  <div className="flex-1 text-left pt-2">
-                    <h4 className="text-foreground mb-2" style={{ fontSize: 'var(--text-xl)' }}>{report.title}</h4>
-                    <div className="flex items-center gap-6 text-muted-foreground" style={{ fontSize: 'var(--text-base)' }}>
-                      <span className="font-[family-name:var(--font-family)]">{report.duration}</span>
-                      <span className="font-[family-name:var(--font-family)]">{report.events} events flagged</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-center w-14 h-14 rounded-full bg-foreground/10 hover:bg-foreground transition-colors group">
-                    <div className="w-0 h-0 border-t-[10px] border-t-transparent border-l-[15px] border-l-foreground group-hover:border-l-background border-b-[10px] border-b-transparent ml-1"></div>
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Row 2: Safety Events Feed */}
-        <div className="bg-card rounded-[var(--radius-card)] border-2 border-border overflow-hidden shadow-[var(--elevation-sm)]">
-          <SafetyEventsFeed />
-        </div>
 
         {/* Row 3: Handover Tasks */}
         <div className="bg-card rounded-[var(--radius-card)] border-2 border-border overflow-hidden shadow-[var(--elevation-sm)]">
           <div className="px-6 py-4 bg-muted border-b border-border flex items-center justify-between">
             <div className="flex items-center gap-3">
               <FileText className="w-5 h-5 text-foreground" />
-              <h3 className="text-foreground">Handover Tasks</h3>
+              <h3 className="text-foreground">Tasks</h3>
             </div>
             <span className="text-muted-foreground font-[family-name:var(--font-family)]" style={{ fontSize: 'var(--text-xs)' }}>
               4 PENDING
@@ -217,50 +104,52 @@ export function PreShiftReview({ videoRef, assetName, assetLocation }: PreShiftR
           </div>
 
           <div className="p-6 space-y-4">
-            {actionItems.map((item) => (
-              <div
-                key={item.id}
-                className={`
-                  p-6 rounded-[var(--radius-card)] border-2 flex items-start gap-6 transition-colors
-                  ${item.status === 'completed' ? 'bg-muted/30 border-border opacity-70' : 'bg-background border-border hover:border-foreground/30'}
-                `}
-              >
-                <button
-                  className="min-w-[64px] min-h-[64px] flex items-center justify-center rounded-[var(--radius-button)] border-2 border-border hover:bg-muted transition-colors flex-shrink-0"
-                >
-                  {item.status === 'completed' ? (
-                    <CheckCircle2 className="w-8 h-8 text-foreground" />
-                  ) : (
-                    <div className="w-8 h-8 rounded-full border-2 border-border hover:border-foreground"></div>
-                  )}
-                </button>
+            {/* Embedded Maintenance Alerts */}
+            <div className="mb-8">
+              <MaintenanceAlerts />
+            </div>
 
-                <div className="flex-1 pt-2">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className={`font-[family-name:var(--font-family)] ${item.status === 'completed' ? 'text-muted-foreground line-through' : 'text-foreground'}`} style={{ fontSize: 'var(--text-xl)' }}>
-                      {item.text}
-                    </p>
-                    <div 
-                      className={`
-                        px-4 py-1.5 rounded-full font-[family-name:var(--font-family)] font-[var(--font-weight-medium)]
-                        ${item.priority === 'high' ? 'bg-foreground text-white' : ''}
-                        ${item.priority === 'medium' ? 'bg-muted-foreground text-white' : ''}
-                        ${item.priority === 'low' ? 'bg-border text-foreground' : ''}
-                      `}
-                      style={{ fontSize: 'var(--text-xs)' }}
-                    >
-                      {item.priority.toUpperCase()}
+            <div className="space-y-4">
+              {actionItems.map((item) => (
+                <div
+                  key={item.id}
+                  className={`
+                    p-6 rounded-[var(--radius-card)] border-2 flex items-start gap-6 transition-colors
+                    ${item.status === 'completed' ? 'bg-muted/30 border-border opacity-70' : 'bg-background border-border hover:border-foreground/30'}
+                  `}
+                >
+                  <button
+                    className="min-w-[64px] min-h-[64px] flex items-center justify-center rounded-[var(--radius-button)] border-2 border-border hover:bg-muted transition-colors flex-shrink-0"
+                  >
+                    {item.status === 'completed' ? (
+                      <CheckCircle2 className="w-8 h-8 text-foreground" />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full border-2 border-border hover:border-foreground"></div>
+                    )}
+                  </button>
+
+                  <div className="flex-1 pt-2">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className={`font-[family-name:var(--font-family)] ${item.status === 'completed' ? 'text-muted-foreground line-through' : 'text-foreground'}`} style={{ fontSize: 'var(--text-xl)' }}>
+                        {item.text}
+                      </p>
+                      <div 
+                        className={`
+                          px-4 py-1.5 rounded-full font-[family-name:var(--font-family)] font-[var(--font-weight-medium)]
+                          ${item.priority === 'high' ? 'bg-foreground text-white' : ''}
+                          ${item.priority === 'medium' ? 'bg-muted-foreground text-white' : ''}
+                          ${item.priority === 'low' ? 'bg-border text-foreground' : ''}
+                        `}
+                        style={{ fontSize: 'var(--text-xs)' }}
+                      >
+                        {item.priority.toUpperCase()}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-
-        {/* Row 4: Maintenance Alerts */}
-        <div className="w-full">
-           <MaintenanceAlerts />
         </div>
       </div>
     </div>

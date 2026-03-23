@@ -29,6 +29,7 @@ import { Radio, StopCircle, MessageSquare, AlertCircle, Wrench, MapPin as MapPin
   BarChart3
 } from 'lucide-react';
 import { TrendsComparison } from './components/TrendsComparison';
+import { Alert } from './components/AlertsDrawer';
 
 export default function App() {
   const [activeView, setActiveView] = useState<'live' | 'historical' | 'jobsite' | 'trends'>('live');
@@ -72,7 +73,16 @@ export default function App() {
   };
 
   // Mock alerts data for Workflow 5
-  const [alerts, setAlerts] = useState([
+  const [alerts, setAlerts] = useState<Alert[]>([
+    {
+      id: 'safety-sign-off',
+      timestamp: new Date(Date.now() - 1000 * 60 * 2),
+      title: 'Safety Sign-Off Pending',
+      description: 'Supervisor sign-off required: JD-650-001 Red Zone Incursion.',
+      riskLevel: 'critical' as const,
+      isSignOff: true,
+      acknowledged: false,
+    },
     {
       id: '1',
       timestamp: new Date(Date.now() - 1000 * 60 * 12),
@@ -112,10 +122,9 @@ export default function App() {
   const [isMonitorInView, setIsMonitorInView] = useState(true);
 
   useEffect(() => {
-    if (activeView === 'historical') {
-      setIsMonitorInView(false);
-      return;
-    }
+    // Reset state based on whether the view HAS a monitor/video by default
+    const hasMonitor = activeView === 'live' || activeView === 'historical';
+    setIsMonitorInView(hasMonitor);
 
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -126,8 +135,10 @@ export default function App() {
 
     // Small delay to ensure Ref is attached after view swap
     const timer = setTimeout(() => {
-      if (monitorRef.current) {
+      if (activeView === 'live' && monitorRef.current) {
         observer.observe(monitorRef.current);
+      } else if (activeView === 'historical' && videoRef.current) {
+        observer.observe(videoRef.current);
       }
     }, 100);
 
@@ -306,7 +317,25 @@ export default function App() {
           {activeView === 'trends' && (
             <div className="p-8">
               <div className="max-w-[1400px] mx-auto">
-                <TrendsComparison assetName={assetData.name} assetModel={assetData.model} />
+                <TrendsComparison 
+                  assetName={assetData.name} 
+                  assetModel={assetData.model} 
+                  rentalRate={{
+                    activeRate: 285.00,
+                    activeRateSource: 'ERP',
+                    hourlyRate: 287.50,
+                    fuel: 45.00,
+                    maintenance: 62.50,
+                    depreciation: 180.00,
+                  }}
+                  utilization={{
+                    rate: 68.5,
+                    plannedMaintenance: 0.5,
+                    unplannedDowntime: 2.87,
+                    idleCost: 4422,
+                  }}
+                  onOpenDiagnostics={() => setShowDiagnostics(true)}
+                />
               </div>
             </div>
           )}
@@ -343,6 +372,7 @@ export default function App() {
           onAcknowledge={handleAcknowledge}
           onAddNote={handleAddNote}
           onRadioOperator={handleRadioOperator}
+          onOpenSafetyEscalation={() => setShowSafetyEscalation(true)}
           isCollapsed={isAlertsCollapsed}
           onToggle={() => setIsAlertsCollapsed(!isAlertsCollapsed)}
         />
@@ -369,16 +399,6 @@ export default function App() {
         <FloatingMonitor 
           onExpand={() => setIsMonitoringExpanded(true)}
           assetName={assetData.name}
-        />
-      )}
-
-      {/* Global Actions Toolbar */}
-      {activeView === 'live' && (
-        <GlobalActionsToolbar 
-          onVerifyPlan={() => setShowSplitScreenCAD(true)}
-          onShowMap={() => setShowMapView(true)}
-          onShowVideo={() => setIsMonitoringExpanded(true)}
-          onAlert={() => setShowSafetyEscalation(true)}
         />
       )}
 
@@ -436,7 +456,10 @@ export default function App() {
           onSignOff={(supervisorName, notes) => {
             console.log('Safety escalation signed off by:', supervisorName);
             console.log('Incident notes:', notes);
-            // In real app, this would save to audit trail and unlock UI
+            // Mark the sign-off alert as acknowledged
+            setAlerts(prev => prev.map(a => 
+              a.id === 'safety-sign-off' ? { ...a, acknowledged: true } : a
+            ));
             setShowSafetyEscalation(false);
           }}
         />

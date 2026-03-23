@@ -323,7 +323,7 @@ export function InlineMonitoring({
             </button>
           </div>
 
-          <p className="text-foreground text-sm leading-relaxed mb-6">
+          <p className="text-foreground text-sm leading-relaxed mb-8">
             Asset operating in idle state for 1 hour 4 minutes. No critical safety events detected. Two routine maintenance checks completed. Equipment showed normal operational parameters throughout monitoring period. Operator remained in cabin during entire session.
           </p>
 

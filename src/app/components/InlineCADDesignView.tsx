@@ -10,7 +10,8 @@ import {
   Target, 
   Layers, 
   Info,
-  Maximize2
+  Maximize2,
+  DraftingCompass
 } from 'lucide-react';
 
 interface InlineCADDesignViewProps {
@@ -62,11 +63,11 @@ export function InlineCADDesignView({ assetName, costCode = 'CSI 31 22 00' }: In
       <div className="p-6 border-b border-border flex items-center justify-between bg-muted/20">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-            <Satellite className="w-5 h-5" />
+            <DraftingCompass className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-foreground font-bold leading-tight text-lg">GNSS vs CAD Design Grade</h3>
-            <p className="text-muted-foreground text-sm font-medium">Real-time elevation monitoring • {costCode}</p>
+            <h3 className="text-foreground font-bold leading-tight text-lg">Deviation mapping</h3>
+            <p className="text-muted-foreground text-sm font-medium">CAD design analysis • {costCode}</p>
           </div>
         </div>
       </div>
@@ -85,34 +86,83 @@ export function InlineCADDesignView({ assetName, costCode = 'CSI 31 22 00' }: In
       )}
 
       <div className="flex-1 flex overflow-hidden">
-        {/* Left: 3D Visualization */}
-        <div className="flex-1 relative bg-muted/10 border-r border-border">
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-             <div className="relative w-[80%] h-[60%] flex items-center justify-center">
-                {/* Simplified 3D Surface representation */}
+        {/* Visualization Area: Now Split into Plan View and Cross-Section */}
+        <div className="flex-1 flex flex-col bg-muted/5 border-r border-border overflow-hidden">
+          {/* Top: Plan (Top-Down Perspective) View (matching screenshot) */}
+          <div className="flex-[1.5] relative flex items-center justify-center p-8 border-b border-border/40 bg-muted/10">
+             <div className="absolute top-3 left-3 px-2 py-1 flex items-center gap-1.5 rounded-lg bg-card/80 backdrop-blur-sm border border-border/60 z-10">
+                <Box className="w-3 h-3 text-muted-foreground" />
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Plan View (Mapping)</span>
+             </div>
+
+             <div className="relative w-full max-w-xl aspect-[2/1] flex items-center justify-center">
+                {/* Visualizing the trapezoidal plane from screenshot */}
                 <div 
-                  className="w-full h-full bg-primary/5 border border-primary/20 rounded-xl"
-                  style={{ transform: 'perspective(400px) rotateX(30deg)' }}
+                  className="absolute inset-0 bg-[#E8E8E8] border border-[#D0D0D0] shadow-[0_10px_30px_rgba(0,0,0,0.05)]"
+                  style={{ 
+                    clipPath: 'polygon(15% 0, 85% 0, 100% 100%, 0 100%)',
+                  }}
                 />
-                <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="flex flex-col items-center">
-                        <div className="w-8 h-8 rounded-full bg-primary border-2 border-white shadow-lg animate-pulse" />
-                        <div className="mt-4 px-3 py-1.5 rounded-lg bg-card/90 backdrop-blur-sm border border-border shadow-sm">
-                            <span className="text-xs font-bold text-foreground">{gnssPosition.elevation.toFixed(2)}'</span>
-                        </div>
+                
+                {/* Asset Point indicator (matching grey dot in screenshot) */}
+                <div className="absolute left-[50%] top-[40%] flex flex-col items-center -translate-x-1/2 -translate-y-1/2">
+                    <div className="w-7 h-7 rounded-full bg-[#757575] border-2 border-white shadow-lg animate-pulse" />
+                    <div className="mt-3 px-3 py-1.5 rounded-lg bg-white border border-[#D0D0D0] shadow-md">
+                        <span className="text-sm font-bold text-foreground">285.42'</span>
                     </div>
+                </div>
+
+                {/* Design target info box (matching top-left in screenshot) */}
+                <div className="absolute top-[-20px] left-[5%] px-4 py-3 rounded-xl bg-white border border-[#D0D0D0] shadow-sm">
+                   <span className="text-[10px] font-extrabold text-[#757575] uppercase tracking-wider block mb-0.5">Design Target</span>
+                   <span className="text-sm font-bold text-foreground">287.00' Grade</span>
                 </div>
              </div>
           </div>
-          
-          <div className="absolute top-4 left-4 p-3 rounded-xl bg-card/80 backdrop-blur-md border border-border shadow-sm">
-             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block mb-1">Design Target</span>
-             <span className="text-sm font-bold text-primary">{designPoint.elevation.toFixed(2)}' Grade</span>
+
+          {/* Bottom: Cross-Sectional Analysis View */}
+          <div className="flex-1 relative bg-background/30 p-4">
+             <div className="absolute top-3 left-3 px-2 py-1 flex items-center gap-1.5 rounded-lg bg-card/80 backdrop-blur-sm border border-border/60 z-10">
+                <Layers className="w-3.5 h-3.5 text-muted-foreground" />
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Cross-Section (Profile)</span>
+             </div>
+
+             <div className="w-full h-full flex flex-col justify-center px-12 pt-8">
+                {/* Design elevation baseline */}
+                <div className="relative h-px w-full bg-primary/20 border-t border-dashed border-primary/40">
+                   <div className="absolute -left-12 -top-2 flex items-center gap-2">
+                       <Target className="w-3.5 h-3.5 text-primary" />
+                       <span className="text-[10px] font-bold text-primary">TARGET</span>
+                   </div>
+                </div>
+
+                {/* Actual terrain profile (curved path representing deviation) */}
+                <div className="relative h-[80px] w-full mt-4">
+                   <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none overflow-visible">
+                      <path 
+                        d="M0,0 Q25,80 50,75 T100,20" 
+                        fill="none" 
+                        stroke="var(--destructive)" 
+                        strokeWidth="2" 
+                        strokeDasharray="0"
+                      />
+                      {/* Asset focus point on profile */}
+                      <circle cx="50" cy="75" r="3" fill="var(--destructive)" />
+                   </svg>
+                   {/* Measurement bracket */}
+                   <div className="absolute left-[50%] h-full top-0 w-px bg-destructive/30 border-l border-dashed border-destructive/50 flex flex-col items-center justify-center">
+                       <span className="bg-destructive text-white text-[9px] font-black px-1.5 py-0.5 rounded -rotate-90 origin-center whitespace-nowrap">
+                          {Math.abs(elevationVariance).toFixed(2)}' VAR
+                       </span>
+                   </div>
+                </div>
+                <div className="w-full h-8 bg-muted/40 rounded-b-lg border-x border-b border-border/20 mt-0" />
+             </div>
           </div>
         </div>
 
-        {/* Right: Real-time Variance & Metrics */}
-        <div className="w-[300px] p-6 flex flex-col gap-6 overflow-y-auto bg-muted/5">
+        {/* Right: Real-time Variance (Simplified Sidebar for Split View) */}
+        <div className="w-[320px] p-6 flex flex-col gap-6 overflow-y-auto bg-muted/5 border-l border-border">
            {/* Variance Display */}
            <div className="text-center p-4 rounded-2xl bg-card border border-border shadow-inner">
               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block mb-2">{getStatusText()}</span>

@@ -2,7 +2,7 @@ import { X, AlertTriangle, MessageSquare, Radio, CheckCircle2, Clock, Video, Che
 import { useState } from 'react';
 import { MaintenanceAlerts } from './MaintenanceAlerts';
 
-interface Alert {
+export interface Alert {
   id: string;
   timestamp: Date;
   title: string;
@@ -10,6 +10,7 @@ interface Alert {
   riskLevel: 'critical' | 'warning' | 'info';
   videoSnippet?: string;
   acknowledged: boolean;
+  isSignOff?: boolean;
 }
 
 interface AlertsDrawerProps {
@@ -17,6 +18,7 @@ interface AlertsDrawerProps {
   onAcknowledge: (id: string) => void;
   onAddNote: (id: string, note: string) => void;
   onRadioOperator: (id: string) => void;
+  onOpenSafetyEscalation?: () => void;
   isCollapsed: boolean;
   onToggle: () => void;
 }
@@ -26,6 +28,7 @@ export function AlertsDrawer({
   onAcknowledge, 
   onAddNote, 
   onRadioOperator,
+  onOpenSafetyEscalation,
   isCollapsed,
   onToggle
 }: AlertsDrawerProps) {
@@ -183,19 +186,38 @@ export function AlertsDrawer({
                         <CheckCircle2 className="w-5 h-5" />
                         Acknowledge
                       </button>
-                      <button
-                        onClick={() => onRadioOperator(alert.id)}
-                        className="
-                          min-w-[60px] min-h-[60px] flex items-center justify-center gap-2
-                          px-4 py-3 rounded-[var(--radius-button)]
-                          border-2 border-border hover:bg-accent transition-colors
-                          font-[family-name:var(--font-family)] font-[var(--font-weight-medium)]
-                        "
-                        style={{ fontSize: 'var(--text-base)' }}
-                      >
-                        <Radio className="w-5 h-5" />
-                        Radio
-                      </button>
+                      {alert.isSignOff ? (
+                        <button
+                          onClick={onOpenSafetyEscalation}
+                          className="
+                            min-w-[60px] min-h-[60px] flex flex-col items-center justify-center gap-1
+                            px-4 py-3 rounded-[var(--radius-button)]
+                            bg-destructive text-white hover:opacity-90 transition-opacity
+                            font-[family-name:var(--font-family)] font-bold
+                            border-2 border-destructive shadow-lg animate-pulse-subtle
+                          "
+                        >
+                          <div className="flex items-center gap-2">
+                            <CheckCircle2 className="w-5 h-5" />
+                            <span className="text-sm uppercase tracking-tighter">Digital Sign Off</span>
+                          </div>
+                          <span className="text-[10px] opacity-80 uppercase font-black">PENDING</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => onRadioOperator(alert.id)}
+                          className="
+                            min-w-[60px] min-h-[60px] flex items-center justify-center gap-2
+                            px-4 py-3 rounded-[var(--radius-button)]
+                            border-2 border-border hover:bg-accent transition-colors
+                            font-[family-name:var(--font-family)] font-[var(--font-weight-medium)]
+                          "
+                          style={{ fontSize: 'var(--text-base)' }}
+                        >
+                          <Radio className="w-5 h-5" />
+                          Radio
+                        </button>
+                      )}
                     </div>
 
                     {/* Add Note Section */}

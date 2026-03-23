@@ -2,16 +2,7 @@ import { X, MapPin, Maximize2, Minimize2, Grid3x3, Camera, Radio, StopCircle, Me
 import { LiveVideoFeed } from './LiveVideoFeed';
 import { TimelineSeeker } from './TimelineSeeker';
 import { useState } from 'react';
-
-interface Alert {
-  id: string;
-  timestamp: Date;
-  title: string;
-  description: string;
-  riskLevel: 'critical' | 'warning' | 'info';
-  videoSnippet?: string;
-  acknowledged: boolean;
-}
+import { Alert } from './AlertsDrawer';
 
 interface ExpandedMonitoringProps {
   onClose: () => void;

@@ -8,76 +8,38 @@ import {
   AlertOctagon,
   Droplet,
   Wrench,
+  FileText,
+  CheckCircle,
+  Gauge,
+  Filter,
   TrendingUp,
+  TrendingDown,
   AlertTriangle,
   Calendar,
-  DollarSign,
-  FileText,
-  CheckCircle
+  DollarSign
 } from 'lucide-react';
-import { DowntimeAttributionModal } from './DowntimeAttributionModal';
 
-interface IdleTimeSegment {
-  id: string;
-  startTime: string;
-  endTime: string;
-  duration: number; // minutes
-  attributed: boolean;
-  taskCode?: string;
-  taskName?: string;
-}
 
 export function ProductionMetricsToday() {
-  const [showAttributionModal, setShowAttributionModal] = useState(false);
-  const [selectedIdleSegment, setSelectedIdleSegment] = useState<IdleTimeSegment | null>(null);
+  const [dataFilter, setDataFilter] = useState<'raw' | 'normalized'>('raw');
 
-  // Mock idle time segments
-  const [idleSegments, setIdleSegments] = useState<IdleTimeSegment[]>([
-    {
-      id: 'IDLE-001',
-      startTime: '09:15 AM',
-      endTime: '09:47 AM',
-      duration: 32,
-      attributed: false
-    },
-    {
-      id: 'IDLE-002',
-      startTime: '11:30 AM',
-      endTime: '12:13 PM',
-      duration: 43,
-      attributed: true,
-      taskCode: 'CC-4200',
-      taskName: 'Rock Blasting Delay'
-    }
-  ]);
-  const handleAttributeIdleTime = (segment: IdleTimeSegment) => {
-    setSelectedIdleSegment(segment);
-    setShowAttributionModal(true);
+  // Mock velocity data
+  const velocityData = {
+    current: 142,
+    target: 180,
+    unit: 'yd³/hr'
   };
 
-  const handleAttributionComplete = (taskCode: string, taskName: string, isOverhead: boolean) => {
-    if (selectedIdleSegment) {
-      setIdleSegments(prev =>
-        prev.map(seg =>
-          seg.id === selectedIdleSegment.id
-            ? {
-                ...seg,
-                attributed: true,
-                taskCode,
-                taskName
-              }
-            : seg
-        )
-      );
-    }
-    setShowAttributionModal(false);
-    setSelectedIdleSegment(null);
+  const velocityPercent = (velocityData.current / velocityData.target) * 100;
+  const getVelocityStatus = () => {
+    if (velocityPercent >= 100) return { label: 'On Target', color: 'var(--color-success)' };
+    if (velocityPercent >= 85) return { label: 'Acceptable', color: 'var(--color-warning)' };
+    return { label: 'At Risk', color: 'var(--destructive)' };
   };
+  const velocityStatus = getVelocityStatus();
 
-  const totalIdleMinutes = idleSegments.reduce((sum, seg) => sum + seg.duration, 0);
-  const unattributedIdleMinutes = idleSegments
-    .filter(seg => !seg.attributed)
-    .reduce((sum, seg) => sum + seg.duration, 0);
+  const totalIdleMinutes = 75; // Mock total
+  const unattributedIdleMinutes = 32; // Mock unattributed
 
   const formatDuration = (minutes: number) => {
     const hours = Math.floor(minutes / 60);
@@ -160,93 +122,130 @@ export function ProductionMetricsToday() {
           </div>
         </div>
 
-        {/* Idle Time Attribution Section */}
-        {idleSegments.length > 0 && (
-          <div className="mb-6 p-4 bg-muted/50 rounded-[var(--radius-card)] border-2 border-border">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Clock className="w-5 h-5 text-foreground" />
-                <h4 className="font-[family-name:var(--font-family)] font-[var(--font-weight-semibold)] text-foreground" style={{ fontSize: 'var(--text-base)' }}>
-                  Downtime Tracking
-                </h4>
-              </div>
-              {unattributedIdleMinutes > 0 && (
-                <div className="flex items-center gap-2 px-3 py-1 bg-color-warning/20 rounded-full">
-                  <AlertTriangle className="w-4 h-4 text-color-warning" />
-                  <span className="text-color-warning font-[family-name:var(--font-family)] font-[var(--font-weight-semibold)]" style={{ fontSize: 'var(--text-sm)' }}>
-                    Action Required
-                  </span>
-                </div>
-              )}
+        {/* Production Velocity Card - Moved from Shift Review */}
+        <div className="mb-6 bg-background rounded-[var(--radius-card)] border-2 border-border p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-2">
+              <Gauge className="w-5 h-5 text-foreground" />
+              <h4 className="font-[family-name:var(--font-family)] font-[var(--font-weight-semibold)] text-foreground" style={{ fontSize: 'var(--text-lg)' }}>
+                Current Velocity
+              </h4>
             </div>
-
-            <div className="space-y-2">
-              {idleSegments.map(segment => (
-                <div
-                  key={segment.id}
-                  className={`flex items-center justify-between p-3 rounded-[var(--radius-button)] border-2 ${
-                    segment.attributed
-                      ? 'bg-background border-border'
-                      : 'bg-color-warning/10 border-color-warning'
-                  }`}
-                >
-                  <div className="flex items-center gap-4 flex-1">
-                    <div className="text-center min-w-[100px]">
-                      <div className="font-[family-name:var(--font-family)] font-[var(--font-weight-semibold)] text-foreground" style={{ fontSize: 'var(--text-base)' }}>
-                        {segment.startTime}
-                      </div>
-                      <div className="text-muted-foreground font-[family-name:var(--font-family)]" style={{ fontSize: 'var(--text-xs)' }}>
-                        to {segment.endTime}
-                      </div>
-                    </div>
-                    <div className="flex-1">
-                      <div className="font-[family-name:var(--font-family)] font-[var(--font-weight-semibold)] text-foreground" style={{ fontSize: 'var(--text-base)' }}>
-                        {formatDuration(segment.duration)} idle
-                      </div>
-                      {segment.attributed ? (
-                        <div className="flex items-center gap-2 mt-1">
-                          <CheckCircle className="w-4 h-4 text-color-success" />
-                          <span className="text-muted-foreground font-[family-name:var(--font-family)]" style={{ fontSize: 'var(--text-sm)' }}>
-                            {segment.taskCode}: {segment.taskName}
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="text-color-warning font-[family-name:var(--font-family)]" style={{ fontSize: 'var(--text-sm)' }}>
-                          Not yet attributed to cost code
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  {!segment.attributed && (
-                    <button
-                      onClick={() => handleAttributeIdleTime(segment)}
-                      className="min-w-[180px] min-h-[60px] px-6 py-3 rounded-[var(--radius-button)] bg-foreground text-background hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
-                    >
-                      <FileText className="w-5 h-5" />
-                      <span className="font-[family-name:var(--font-family)] font-[var(--font-weight-semibold)]" style={{ fontSize: 'var(--text-base)' }}>
-                        Attribute to Code
-                      </span>
-                    </button>
-                  )}
-                </div>
-              ))}
+            
+            {/* Data Filter Toggle */}
+            <div className="flex items-center gap-2 bg-muted rounded-full p-1 border-2 border-border">
+              <button
+                onClick={() => setDataFilter('raw')}
+                className={`px-4 py-2 rounded-full transition-all font-[family-name:var(--font-family)] font-[var(--font-weight-medium)] flex items-center gap-2 ${
+                  dataFilter === 'raw'
+                    ? 'bg-foreground text-background'
+                    : 'text-foreground hover:bg-accent'
+                }`}
+                style={{ fontSize: 'var(--text-sm)' }}
+              >
+                <Filter className="w-4 h-4" />
+                Raw
+              </button>
+              <button
+                onClick={() => setDataFilter('normalized')}
+                className={`px-4 py-2 rounded-full transition-all font-[family-name:var(--font-family)] font-[var(--font-weight-medium)] flex items-center gap-2 ${
+                  dataFilter === 'normalized'
+                    ? 'bg-foreground text-background'
+                    : 'text-foreground hover:bg-accent'
+                }`}
+                style={{ fontSize: 'var(--text-sm)' }}
+              >
+                <Filter className="w-4 h-4" />
+                Normalized
+              </button>
             </div>
           </div>
-        )}
 
+          <div className="flex items-center gap-12">
+            {/* Circular Gauge Visual */}
+            <div className="relative w-48 h-48 flex-shrink-0">
+              <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="40"
+                  fill="none"
+                  stroke="var(--border)"
+                  strokeWidth="8"
+                />
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="40"
+                  fill="none"
+                  stroke={velocityStatus.color}
+                  strokeWidth="8"
+                  strokeLinecap="round"
+                  strokeDasharray={`${Math.min(velocityPercent * 2.51, 251.2)} 251.2`}
+                  style={{ transition: 'stroke-dasharray 0.5s ease' }}
+                />
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <div className="font-[family-name:var(--font-family)] font-[var(--font-weight-bold)] text-foreground" style={{ fontSize: 'var(--text-3xl)' }}>
+                  {velocityData.current}
+                </div>
+                <div className="text-muted-foreground font-[family-name:var(--font-family)]" style={{ fontSize: 'var(--text-sm)' }}>
+                  {velocityData.unit}
+                </div>
+              </div>
+            </div>
+
+            {/* Performance Indicators */}
+            <div className="flex-1 grid grid-cols-2 gap-4">
+              <div className="p-4 bg-muted/50 rounded-[var(--radius-button)] border-2 border-border">
+                <div className="text-muted-foreground font-[family-name:var(--font-family)] mb-1" style={{ fontSize: 'var(--text-xs)' }}>
+                  Performance
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-[family-name:var(--font-family)] font-[var(--font-weight-bold)]" style={{ fontSize: 'var(--text-2xl)', color: velocityStatus.color }}>
+                    {Math.round(velocityPercent)}%
+                  </span>
+                  <div className="px-2 py-0.5 rounded-full" style={{ backgroundColor: `${velocityStatus.color}20` }}>
+                    <span className="font-[family-name:var(--font-family)] font-[var(--font-weight-bold)]" style={{ fontSize: 'var(--text-[10px])', color: velocityStatus.color }}>
+                      {velocityStatus.label.toUpperCase()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 bg-muted/50 rounded-[var(--radius-button)] border-2 border-border">
+                <div className="text-muted-foreground font-[family-name:var(--font-family)] mb-1" style={{ fontSize: 'var(--text-xs)' }}>
+                  Target Baseline
+                </div>
+                <div className="font-[family-name:var(--font-family)] font-[var(--font-weight-bold)] text-foreground" style={{ fontSize: 'var(--text-2xl)' }}>
+                  {velocityData.target} <span className="text-muted-foreground font-[var(--font-weight-medium)]" style={{ fontSize: 'var(--text-sm)' }}>{velocityData.unit}</span>
+                </div>
+              </div>
+
+              <div className="p-4 bg-muted/50 rounded-[var(--radius-button)] border-2 border-border col-span-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-muted-foreground font-[family-name:var(--font-family)] mb-1" style={{ fontSize: 'var(--text-xs)' }}>
+                      Variance from Bid
+                    </div>
+                    <div className={`font-[family-name:var(--font-family)] font-[var(--font-weight-bold)] ${velocityData.current >= velocityData.target ? 'text-color-success' : 'text-destructive'}`} style={{ fontSize: 'var(--text-xl)' }}>
+                      {velocityData.current >= velocityData.target ? '+' : ''}{velocityData.current - velocityData.target} {velocityData.unit}
+                    </div>
+                  </div>
+                  {dataFilter === 'normalized' && (
+                    <div className="flex items-center gap-2 px-3 py-1 bg-primary/10 rounded-full border border-primary/20">
+                      <TrendingUp className="w-3 h-3 text-primary" />
+                      <span className="text-primary font-[family-name:var(--font-family)] font-[var(--font-weight-semibold)]" style={{ fontSize: 'var(--text-[10px])' }}>
+                        NORMALIZED
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-
-      {/* Downtime Attribution Modal */}
-      {showAttributionModal && selectedIdleSegment && (
-        <DowntimeAttributionModal
-          segment={selectedIdleSegment}
-          onComplete={handleAttributionComplete}
-          onCancel={() => {
-            setShowAttributionModal(false);
-            setSelectedIdleSegment(null);
-          }}
-        />
-      )}
+      </div>
     </>
   );
 }
