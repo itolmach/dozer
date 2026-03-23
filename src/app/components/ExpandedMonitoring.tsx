@@ -1,0 +1,716 @@
+import { X, MapPin, Maximize2, Minimize2, Grid3x3, Camera, Radio, StopCircle, MessageSquare, AlertCircle, Wrench, MapPin as MapPinIcon, Copy, Settings, Check, Pencil } from 'lucide-react';
+import { LiveVideoFeed } from './LiveVideoFeed';
+import { TimelineSeeker } from './TimelineSeeker';
+import { useState } from 'react';
+
+interface Alert {
+  id: string;
+  timestamp: Date;
+  title: string;
+  description: string;
+  riskLevel: 'critical' | 'warning' | 'info';
+  videoSnippet?: string;
+  acknowledged: boolean;
+}
+
+interface ExpandedMonitoringProps {
+  onClose: () => void;
+  onBookmark: () => void;
+  location: {
+    lat: number;
+    lng: number;
+    siteName: string;
+  };
+  assetName: string;
+  alerts: Alert[];
+  onAcknowledge: (id: string) => void;
+  onAddNote: (id: string, note: string) => void;
+  onRadioOperator: (id: string) => void;
+  onMapClick?: () => void;
+}
+
+interface TimelineBookmark {
+  id: string;
+  time: number;
+  label?: string;
+  note?: string;
+  tags?: string[];
+}
+
+interface CameraView {
+  id: string;
+  name: string;
+  angle: string;
+  active: boolean;
+}
+
+export function ExpandedMonitoring({ 
+  onClose, 
+  onBookmark, 
+  location, 
+  assetName,
+  alerts,
+  onAcknowledge,
+  onAddNote,
+  onRadioOperator,
+  onMapClick
+}: ExpandedMonitoringProps) {
+  const [isPlaying, setIsPlaying] = useState(true);
+  const [currentTime, setCurrentTime] = useState(3847); // 1hr 4min 7sec into recording
+  const [duration] = useState(7200); // 2 hours of footage
+  const [bookmarks, setBookmarks] = useState<TimelineBookmark[]>([
+    { id: '1', time: 1200, label: 'Equipment startup', tags: ['operation'] },
+    { id: '2', time: 2400, label: 'Safety check', tags: ['safety', 'inspection'] },
+  ]);
+  const [showMapHover, setShowMapHover] = useState(false);
+  const [selectedCamera, setSelectedCamera] = useState<string>('front');
+  const [cameras] = useState<CameraView[]>([
+    { id: 'front', name: 'Front Dash-Cam', angle: 'Front 180°', active: true },
+    { id: 'rear', name: 'Rear View', angle: 'Rear 120°', active: false },
+    { id: 'cabin', name: 'Cabin View', angle: 'Operator', active: false },
+    { id: 'side-left', name: 'Left Side', angle: 'Port 90°', active: false },
+  ]);
+  const [commentText, setCommentText] = useState('');
+  const [showShareSettings, setShowShareSettings] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [summaryCopied, setSummaryCopied] = useState(false);
+  const [shareSettings, setShareSettings] = useState({
+    includeTimestamp: true,
+    includeCamera: true,
+    includeBookmarks: false,
+    includeAlerts: false,
+  });
+  const [showActivityInput, setShowActivityInput] = useState(false);
+  const [activityText, setActivityText] = useState('');
+
+  const handleAddBookmark = (time: number) => {
+    const newBookmark: TimelineBookmark = {
+      id: `bookmark-${Date.now()}`,
+      time,
+    };
+    setBookmarks([...bookmarks, newBookmark]);
+  };
+
+  const handleUpdateBookmark = (id: string, data: Partial<TimelineBookmark>) => {
+    setBookmarks(bookmarks.map(b => b.id === id ? { ...b, ...data } : b));
+  };
+
+  const handleSendComment = () => {
+    if (commentText.trim()) {
+      // Add comment as a bookmark at current time
+      const newBookmark: TimelineBookmark = {
+        id: `comment-${Date.now()}`,
+        time: currentTime,
+        label: commentText,
+        tags: ['comment'],
+      };
+      setBookmarks([...bookmarks, newBookmark]);
+      setCommentText('');
+    }
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const generateShareLink = () => {
+    const baseUrl = 'dozer.app/watch';
+    const assetId = 'm4k92x'; // Mock asset ID
+    let params = [];
+    
+    if (shareSettings.includeTimestamp) {
+      params.push(`t=${currentTime}`);
+    }
+    if (shareSettings.includeCamera) {
+      params.push(`cam=${selectedCamera}`);
+    }
+    if (shareSettings.includeBookmarks) {
+      params.push(`bookmarks=1`);
+    }
+    if (shareSettings.includeAlerts) {
+      params.push(`alerts=1`);
+    }
+    
+    return params.length > 0 
+      ? `${baseUrl}/${assetId}?${params.join('&')}`
+      : `${baseUrl}/${assetId}`;
+  };
+
+  const handleCopyLink = async () => {
+    const link = generateShareLink();
+    await navigator.clipboard.writeText(link);
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2000);
+  };
+
+  const handleCopySummary = async () => {
+    const summaryText = `Dozer AI Monitoring Summary - ${assetName}\n\nAsset operating in idle state for 1 hour 4 minutes. No critical safety events detected. Two routine maintenance checks completed. Equipment showed normal operational parameters throughout monitoring period. Operator remained in cabin during entire session.\n\nGenerated by Dozer AI at ${new Date().toLocaleString()}`;
+    await navigator.clipboard.writeText(summaryText);
+    setSummaryCopied(true);
+    setTimeout(() => setSummaryCopied(false), 2000);
+  };
+
+  const handleRecordActivity = () => {
+    if (activityText.trim()) {
+      // Log activity as a bookmark at current time with 'activity' tag
+      const newBookmark: TimelineBookmark = {
+        id: `activity-${Date.now()}`,
+        time: currentTime,
+        label: activityText,
+        tags: ['activity'],
+      };
+      setBookmarks([...bookmarks, newBookmark]);
+      setActivityText('');
+      setShowActivityInput(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-background z-50 flex flex-col">
+      {/* Header Bar */}
+      <div className="bg-card border-b-2 border-border px-8 py-4 flex items-center justify-between flex-shrink-0">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={onClose}
+            className="min-w-[60px] min-h-[60px] flex items-center justify-center rounded-[var(--radius-button)] border-2 border-border hover:bg-accent transition-colors"
+            aria-label="Exit monitoring mode"
+          >
+            <Minimize2 className="w-5 h-5 text-foreground" />
+          </button>
+          <div>
+            <h2 className="text-foreground">Idle Monitoring Mode</h2>
+            <p className="text-muted-foreground">{assetName}</p>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <MapPin className="w-5 h-5" />
+          <span className="font-[family-name:var(--font-family)]" style={{ fontSize: 'var(--text-base)' }}>
+            {location.siteName}
+          </span>
+        </div>
+      </div>
+
+      {/* Main Content Area */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Video Section with Timeline */}
+        <div className="flex-1 flex flex-col overflow-y-auto">
+          {/* Video Container with Floating Map and Camera Selector */}
+          <div className="p-8 pb-0">
+            <div className="relative h-[67vh] min-h-[600px] bg-card rounded-t-[var(--radius-card)] border-2 border-b-0 border-border overflow-hidden shadow-[var(--elevation-sm)]">
+              {/* Main Video Feed */}
+              <div className="absolute inset-0 bg-[#1a1a1a]">
+                {/* Simulated video feed with construction scene */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="absolute inset-0 bg-gradient-to-br from-[#2a2a2a] via-[#3a3a3a] to-[#1a1a1a]">
+                    {/* Dirt/ground texture simulation */}
+                    <div className="absolute inset-0 opacity-30" style={{
+                      backgroundImage: `radial-gradient(circle at 20% 50%, rgba(80, 80, 80, 0.4) 0%, transparent 50%),
+                                       radial-gradient(circle at 80% 30%, rgba(100, 100, 100, 0.3) 0%, transparent 50%),
+                                       radial-gradient(circle at 40% 80%, rgba(60, 60, 60, 0.4) 0%, transparent 50%)`
+                    }}></div>
+                  </div>
+                  
+                  {/* Bucket/blade representation */}
+                  <div className="absolute bottom-1/4 left-1/3 w-48 h-32 bg-[#707070] border-4 border-[#505050] rounded-lg shadow-2xl transform rotate-[-12deg]">
+                    <div className="absolute inset-2 border-2 border-[#505050]/50"></div>
+                  </div>
+
+                  {/* Safety overlay - object detection boxes */}
+                  <div className="absolute top-32 right-48 w-32 h-40 border-2 border-muted-foreground rounded">
+                    <div className="absolute -top-6 left-0 px-2 py-1 bg-muted-foreground text-white rounded" style={{ fontSize: '12px' }}>
+                      <span className="font-[family-name:var(--font-family)] font-[var(--font-weight-medium)]">Equipment</span>
+                    </div>
+                  </div>
+
+                  {/* Timestamp overlay */}
+                  <div className="absolute top-6 left-6 px-4 py-2 bg-black/70 rounded-[var(--radius-button)]">
+                    <span className="font-[family-name:var(--font-family)] text-white" style={{ fontSize: 'var(--text-base)' }}>
+                      {new Date().toLocaleTimeString()} | {new Date().toLocaleDateString()}
+                    </span>
+                  </div>
+
+                  {/* AI Status indicator */}
+                  <div className="absolute bottom-6 left-6 px-4 py-2 bg-muted-foreground/90 rounded-[var(--radius-button)] flex items-center gap-2">
+                    <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                    <span className="font-[family-name:var(--font-family)] font-[var(--font-weight-medium)] text-white" style={{ fontSize: 'var(--text-sm)' }}>
+                      AI Detection Active
+                    </span>
+                  </div>
+                </div>
+
+                {/* Floating Map Overlay - Top Right */}
+                <div
+                  className="absolute top-6 right-6 w-[200px] h-[140px] rounded-[var(--radius-button)] overflow-hidden border-2 border-white/80 shadow-lg bg-[#c5e8d5] cursor-pointer transition-all hover:scale-105"
+                  onMouseEnter={() => setShowMapHover(true)}
+                  onMouseLeave={() => setShowMapHover(false)}
+                  onClick={() => onMapClick?.()}
+                >
+                  {/* Map pattern */}
+                  <div className="absolute inset-0" style={{
+                    backgroundImage: `
+                      linear-gradient(rgba(0,0,0,0.1) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(0,0,0,0.1) 1px, transparent 1px)
+                    `,
+                    backgroundSize: '12px 12px'
+                  }}></div>
+                  
+                  {/* Simplified roads */}
+                  <div className="absolute top-1/2 left-0 right-0 h-2 bg-white/60"></div>
+                  <div className="absolute top-0 bottom-0 left-2/3 w-2 bg-white/60"></div>
+                  
+                  {/* Asset Location Pin */}
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-full">
+                    <div className="relative">
+                      <div className="w-6 h-6 rounded-full bg-foreground border-2 border-white shadow-md flex items-center justify-center">
+                        <div className="w-2 h-2 rounded-full bg-white"></div>
+                      </div>
+                      <div className="absolute top-full left-1/2 w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[6px] border-t-foreground -translate-x-1/2"></div>
+                    </div>
+                  </div>
+
+                  {/* Location Info Overlay - Shows on Hover */}
+                  {showMapHover && (
+                    <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center p-4 text-white">
+                      <MapPin className="w-6 h-6 mb-2" />
+                      <div className="font-[family-name:var(--font-family)] font-[var(--font-weight-semibold)] text-center mb-1" style={{ fontSize: 'var(--text-sm)' }}>
+                        {location.siteName}
+                      </div>
+                      <div className="font-[family-name:var(--font-family)] text-center" style={{ fontSize: '11px' }}>
+                        {location.lat.toFixed(4)}, {location.lng.toFixed(4)}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Map label when not hovering */}
+                  {!showMapHover && (
+                    <div className="absolute bottom-2 left-2 right-2 px-2 py-1 bg-white/90 rounded text-center">
+                      <span className="font-[family-name:var(--font-family)] font-[var(--font-weight-medium)] text-foreground" style={{ fontSize: '11px' }}>
+                        Location
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Camera Selector - Top Left */}
+                <div className="absolute top-6 left-6 flex flex-col gap-2">
+                  <div className="bg-black/70 rounded-[var(--radius-button)] p-2 border-2 border-white/20">
+                    <div className="flex items-center gap-2 px-2 py-1 mb-2">
+                      <Camera className="w-4 h-4 text-white" />
+                      <span className="font-[family-name:var(--font-family)] font-[var(--font-weight-semibold)] text-white" style={{ fontSize: 'var(--text-sm)' }}>
+                        Camera Views
+                      </span>
+                    </div>
+                    <div className="space-y-1">
+                      {cameras.map((camera) => (
+                        <button
+                          key={camera.id}
+                          onClick={() => setSelectedCamera(camera.id)}
+                          className={`w-full min-h-[44px] px-3 py-2 rounded transition-colors text-left ${
+                            selectedCamera === camera.id
+                              ? 'bg-white text-foreground'
+                              : 'bg-white/10 text-white hover:bg-white/20'
+                          }`}
+                        >
+                          <div className="font-[family-name:var(--font-family)] font-[var(--font-weight-medium)]" style={{ fontSize: 'var(--text-sm)' }}>
+                            {camera.name}
+                          </div>
+                          <div className="font-[family-name:var(--font-family)] opacity-70" style={{ fontSize: '11px' }}>
+                            {camera.angle}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Multi-View Grid Toggle - Bottom Right */}
+                <div className="absolute bottom-6 right-6">
+                  <button
+                    className="min-w-[60px] min-h-[60px] flex items-center justify-center rounded-[var(--radius-button)] bg-black/70 border-2 border-white/20 hover:bg-black/80 transition-colors"
+                    aria-label="Toggle multi-view grid"
+                    title="Split screen multi-camera view"
+                  >
+                    <Grid3x3 className="w-6 h-6 text-white" />
+                  </button>
+                </div>
+
+                {/* Floating Quick Actions Bar - Bottom Center */}
+                <div className="absolute bottom-6 left-1/2 -translate-x-1/2">
+                  <div className="flex flex-col items-center gap-3">
+                    {/* Activity Input - Shows when "Record Activity" is clicked */}
+                    {showActivityInput && (
+                      <div className="bg-white/95 backdrop-blur-sm rounded-full border-2 border-border shadow-[var(--elevation-lg)] px-4 py-3 flex items-center gap-3 min-w-[400px]">
+                        <input
+                          type="text"
+                          value={activityText}
+                          onChange={(e) => setActivityText(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              handleRecordActivity();
+                            } else if (e.key === 'Escape') {
+                              setShowActivityInput(false);
+                              setActivityText('');
+                            }
+                          }}
+                          placeholder="Describe the current activity..."
+                          autoFocus
+                          className="flex-1 min-h-[44px] px-4 py-2 bg-muted rounded-full border-2 border-transparent focus:border-foreground focus:outline-none font-[family-name:var(--font-family)] text-foreground placeholder:text-muted-foreground transition-colors"
+                          style={{ fontSize: 'var(--text-base)' }}
+                        />
+                        <button
+                          onClick={handleRecordActivity}
+                          disabled={!activityText.trim()}
+                          className="min-w-[60px] min-h-[44px] px-5 py-2 rounded-full bg-foreground text-white hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed font-[family-name:var(--font-family)] font-[var(--font-weight-medium)]"
+                          style={{ fontSize: 'var(--text-sm)' }}
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowActivityInput(false);
+                            setActivityText('');
+                          }}
+                          className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full hover:bg-accent transition-colors"
+                          title="Cancel"
+                        >
+                          <X className="w-5 h-5 text-foreground" />
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Action Buttons */}
+                    <div className="bg-white/95 backdrop-blur-sm rounded-full border-2 border-border shadow-[var(--elevation-lg)] px-4 py-3 flex items-center gap-2">
+                      <button
+                        onClick={() => onRadioOperator('general')}
+                        className="min-w-[60px] min-h-[60px] flex items-center justify-center gap-2 px-4 rounded-full bg-foreground text-white hover:opacity-90 transition-opacity"
+                        title="Communicate with Operator"
+                      >
+                        <Radio className="w-5 h-5" />
+                        <span className="font-[family-name:var(--font-family)] font-[var(--font-weight-medium)]" style={{ fontSize: 'var(--text-sm)' }}>
+                          Radio
+                        </span>
+                      </button>
+                      
+                      <button
+                        className="min-w-[60px] min-h-[60px] flex items-center justify-center gap-2 px-4 rounded-full bg-foreground text-white hover:opacity-90 transition-opacity"
+                        title="Halt Asset"
+                      >
+                        <StopCircle className="w-5 h-5" />
+                        <span className="font-[family-name:var(--font-family)] font-[var(--font-weight-medium)]" style={{ fontSize: 'var(--text-sm)' }}>
+                          Halt
+                        </span>
+                      </button>
+
+                      <button
+                        onClick={() => setShowActivityInput(!showActivityInput)}
+                        className={`min-w-[60px] min-h-[60px] flex items-center justify-center gap-2 px-4 rounded-full transition-opacity ${
+                          showActivityInput 
+                            ? 'bg-accent text-foreground' 
+                            : 'bg-foreground text-white hover:opacity-90'
+                        }`}
+                        title="Record current asset activity for historical tracking"
+                      >
+                        <Pencil className="w-5 h-5" />
+                        <span className="font-[family-name:var(--font-family)] font-[var(--font-weight-medium)]" style={{ fontSize: 'var(--text-sm)' }}>
+                          Record
+                        </span>
+                      </button>
+
+                      <div className="w-px h-8 bg-border mx-1"></div>
+
+                      <button
+                        className="min-w-[60px] min-h-[60px] flex items-center justify-center rounded-full hover:bg-accent transition-colors"
+                        title="Request Support"
+                      >
+                        <MessageSquare className="w-5 h-5 text-foreground" />
+                      </button>
+
+                      <button
+                        className="min-w-[60px] min-h-[60px] flex items-center justify-center rounded-full hover:bg-accent transition-colors"
+                        title="Log Maintenance"
+                      >
+                        <Wrench className="w-5 h-5 text-foreground" />
+                      </button>
+
+                      <button
+                        className="min-w-[60px] min-h-[60px] flex items-center justify-center rounded-full hover:bg-accent transition-colors"
+                        title="Reassign Location"
+                      >
+                        <MapPinIcon className="w-5 h-5 text-foreground" />
+                      </button>
+
+                      <button
+                        className="min-w-[60px] min-h-[60px] flex items-center justify-center rounded-full hover:bg-accent transition-colors"
+                        title="Report Incident"
+                      >
+                        <AlertCircle className="w-5 h-5 text-foreground" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Timeline Seeker - Bottom */}
+          <div className="px-8">
+            <TimelineSeeker
+              duration={duration}
+              currentTime={currentTime}
+              onSeek={setCurrentTime}
+              onPlayPause={() => setIsPlaying(!isPlaying)}
+              isPlaying={isPlaying}
+              bookmarks={bookmarks}
+              onAddBookmark={handleAddBookmark}
+              onUpdateBookmark={handleUpdateBookmark}
+            />
+          </div>
+
+          {/* Comment Input and Summary Section */}
+          <div className="px-8 pb-8">
+            <div className="bg-card rounded-[var(--radius-card)] border-2 border-border mt-4 overflow-hidden">
+              {/* Add Comment Input */}
+              <div className="p-6 border-b-2 border-border flex items-start gap-4">
+                {/* User Avatar */}
+                <div className="w-10 h-10 rounded-full bg-foreground flex items-center justify-center flex-shrink-0">
+                  <span className="font-[family-name:var(--font-family)] font-[var(--font-weight-semibold)] text-white" style={{ fontSize: 'var(--text-sm)' }}>
+                    OP
+                  </span>
+                </div>
+                
+                {/* Comment Input */}
+                <div className="flex-1 flex items-center gap-3">
+                  <input
+                    type="text"
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleSendComment();
+                      }
+                    }}
+                    placeholder="Add a comment..."
+                    className="flex-1 min-h-[44px] px-4 py-2 bg-muted rounded-full border-2 border-transparent focus:border-foreground focus:outline-none font-[family-name:var(--font-family)] text-foreground placeholder:text-muted-foreground transition-colors"
+                    style={{ fontSize: 'var(--text-base)' }}
+                  />
+                  <button
+                    onClick={handleSendComment}
+                    disabled={!commentText.trim()}
+                    className="min-w-[60px] min-h-[44px] px-6 py-2 rounded-full bg-foreground text-white hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed font-[family-name:var(--font-family)] font-[var(--font-weight-medium)]"
+                    style={{ fontSize: 'var(--text-sm)' }}
+                  >
+                    Send
+                  </button>
+                </div>
+              </div>
+
+              {/* Summary Section */}
+              <div className="p-6">
+                <div className="flex items-start justify-between mb-6">
+                  <div className="flex-1">
+                    <h4 className="text-foreground mb-2">Summary</h4>
+                    <p className="text-muted-foreground" style={{ fontSize: 'var(--text-sm)' }}>
+                      Generated by AI Monitoring System
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleCopySummary}
+                    className="min-w-[44px] min-h-[44px] flex items-center justify-center gap-2 px-4 rounded-[var(--radius-button)] border-2 border-border hover:bg-accent transition-colors"
+                    title="Copy summary to clipboard"
+                  >
+                    {summaryCopied ? (
+                      <>
+                        <Check className="w-4 h-4 text-foreground" />
+                        <span className="font-[family-name:var(--font-family)] font-[var(--font-weight-medium)] text-foreground" style={{ fontSize: 'var(--text-sm)' }}>
+                          Copied
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-4 h-4 text-foreground" />
+                        <span className="font-[family-name:var(--font-family)] font-[var(--font-weight-medium)] text-foreground" style={{ fontSize: 'var(--text-sm)' }}>
+                          Copy
+                        </span>
+                      </>
+                    )}
+                  </button>
+                </div>
+                <p className="text-foreground leading-relaxed mb-6" style={{ fontSize: 'var(--text-base)' }}>
+                  Asset operating in idle state for 1 hour 4 minutes. No critical safety events detected. Two routine maintenance checks completed. Equipment showed normal operational parameters throughout monitoring period. Operator remained in cabin during entire session.
+                </p>
+
+                {/* Share Link Section */}
+                <div className="mb-6 p-4 bg-muted rounded-[var(--radius-card)]">
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <h5 className="text-foreground font-[family-name:var(--font-family)] font-[var(--font-weight-semibold)]" style={{ fontSize: 'var(--text-base)' }}>
+                      Share This View
+                    </h5>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 flex items-center gap-2 px-4 py-2 bg-card rounded-[var(--radius-button)] border-2 border-border">
+                      <span className="font-[family-name:var(--font-family)] text-muted-foreground flex-1 truncate" style={{ fontSize: 'var(--text-sm)' }}>
+                        {generateShareLink()}
+                      </span>
+                    </div>
+                    <button
+                      onClick={handleCopyLink}
+                      className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-[var(--radius-button)] border-2 border-border hover:bg-accent transition-colors flex-shrink-0"
+                      title="Copy link"
+                    >
+                      {linkCopied ? (
+                        <Check className="w-4 h-4 text-foreground" />
+                      ) : (
+                        <Copy className="w-4 h-4 text-foreground" />
+                      )}
+                    </button>
+                    <div className="relative">
+                      <button
+                        onClick={() => setShowShareSettings(!showShareSettings)}
+                        className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-[var(--radius-button)] border-2 border-border hover:bg-accent transition-colors flex-shrink-0"
+                        title="Link settings"
+                      >
+                        <Settings className="w-4 h-4 text-foreground" />
+                      </button>
+                      
+                      {/* Share Settings Popover */}
+                      {showShareSettings && (
+                        <>
+                          <div 
+                            className="fixed inset-0 z-40" 
+                            onClick={() => setShowShareSettings(false)}
+                          ></div>
+                          <div className="absolute right-0 top-full mt-2 w-[280px] bg-card rounded-[var(--radius-card)] border-2 border-border shadow-[var(--elevation-lg)] z-50 overflow-hidden">
+                            <div className="p-4 border-b-2 border-border">
+                              <h6 className="font-[family-name:var(--font-family)] font-[var(--font-weight-semibold)] text-foreground" style={{ fontSize: 'var(--text-base)' }}>
+                                Share Settings
+                              </h6>
+                              <p className="text-muted-foreground mt-1" style={{ fontSize: 'var(--text-sm)' }}>
+                                Configure what to include in the link
+                              </p>
+                            </div>
+                            <div className="p-4 space-y-3">
+                              <label className="flex items-center gap-3 cursor-pointer group">
+                                <input
+                                  type="checkbox"
+                                  checked={shareSettings.includeTimestamp}
+                                  onChange={(e) => setShareSettings({ ...shareSettings, includeTimestamp: e.target.checked })}
+                                  className="w-5 h-5 rounded border-2 border-border accent-foreground cursor-pointer"
+                                />
+                                <div className="flex-1">
+                                  <div className="font-[family-name:var(--font-family)] font-[var(--font-weight-medium)] text-foreground group-hover:underline" style={{ fontSize: 'var(--text-sm)' }}>
+                                    Current timestamp
+                                  </div>
+                                  <div className="text-muted-foreground" style={{ fontSize: '12px' }}>
+                                    Start at {formatTime(currentTime)}
+                                  </div>
+                                </div>
+                              </label>
+                              <label className="flex items-center gap-3 cursor-pointer group">
+                                <input
+                                  type="checkbox"
+                                  checked={shareSettings.includeCamera}
+                                  onChange={(e) => setShareSettings({ ...shareSettings, includeCamera: e.target.checked })}
+                                  className="w-5 h-5 rounded border-2 border-border accent-foreground cursor-pointer"
+                                />
+                                <div className="flex-1">
+                                  <div className="font-[family-name:var(--font-family)] font-[var(--font-weight-medium)] text-foreground group-hover:underline" style={{ fontSize: 'var(--text-sm)' }}>
+                                    Camera view
+                                  </div>
+                                  <div className="text-muted-foreground" style={{ fontSize: '12px' }}>
+                                    {cameras.find(c => c.id === selectedCamera)?.name}
+                                  </div>
+                                </div>
+                              </label>
+                              <label className="flex items-center gap-3 cursor-pointer group">
+                                <input
+                                  type="checkbox"
+                                  checked={shareSettings.includeBookmarks}
+                                  onChange={(e) => setShareSettings({ ...shareSettings, includeBookmarks: e.target.checked })}
+                                  className="w-5 h-5 rounded border-2 border-border accent-foreground cursor-pointer"
+                                />
+                                <div className="flex-1">
+                                  <div className="font-[family-name:var(--font-family)] font-[var(--font-weight-medium)] text-foreground group-hover:underline" style={{ fontSize: 'var(--text-sm)' }}>
+                                    Bookmarks
+                                  </div>
+                                  <div className="text-muted-foreground" style={{ fontSize: '12px' }}>
+                                    {bookmarks.length} markers
+                                  </div>
+                                </div>
+                              </label>
+                              <label className="flex items-center gap-3 cursor-pointer group">
+                                <input
+                                  type="checkbox"
+                                  checked={shareSettings.includeAlerts}
+                                  onChange={(e) => setShareSettings({ ...shareSettings, includeAlerts: e.target.checked })}
+                                  className="w-5 h-5 rounded border-2 border-border accent-foreground cursor-pointer"
+                                />
+                                <div className="flex-1">
+                                  <div className="font-[family-name:var(--font-family)] font-[var(--font-weight-medium)] text-foreground group-hover:underline" style={{ fontSize: 'var(--text-sm)' }}>
+                                    Active alerts
+                                  </div>
+                                  <div className="text-muted-foreground" style={{ fontSize: '12px' }}>
+                                    {alerts.filter(a => !a.acknowledged).length} unacknowledged
+                                  </div>
+                                </div>
+                              </label>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Key Events / Chapters */}
+                <h4 className="text-foreground mb-4">Key Events</h4>
+                <div className="space-y-3">
+                  {alerts.slice(0, 3).map((alert, index) => {
+                    const eventTime = Math.floor((Date.now() - alert.timestamp.getTime()) / 1000);
+                    return (
+                      <button
+                        key={alert.id}
+                        onClick={() => setCurrentTime(duration - eventTime)}
+                        className="w-full flex items-start gap-4 p-3 rounded-[var(--radius-button)] hover:bg-muted transition-colors text-left group"
+                      >
+                        <span className="font-[family-name:var(--font-family)] font-[var(--font-weight-medium)] text-muted-foreground min-w-[48px]" style={{ fontSize: 'var(--text-sm)' }}>
+                          {formatTime(duration - eventTime)}
+                        </span>
+                        <div className="flex-1">
+                          <div className="font-[family-name:var(--font-family)] text-foreground group-hover:underline" style={{ fontSize: 'var(--text-base)' }}>
+                            {alert.title}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                  
+                  {bookmarks.map((bookmark) => (
+                    <button
+                      key={bookmark.id}
+                      onClick={() => setCurrentTime(bookmark.time)}
+                      className="w-full flex items-start gap-4 p-3 rounded-[var(--radius-button)] hover:bg-muted transition-colors text-left group"
+                    >
+                      <span className="font-[family-name:var(--font-family)] font-[var(--font-weight-medium)] text-muted-foreground min-w-[48px]" style={{ fontSize: 'var(--text-sm)' }}>
+                        {formatTime(bookmark.time)}
+                      </span>
+                      <div className="flex-1">
+                        <div className="font-[family-name:var(--font-family)] text-foreground group-hover:underline" style={{ fontSize: 'var(--text-base)' }}>
+                          {bookmark.label}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+
+      </div>
+    </div>
+  );
+}
