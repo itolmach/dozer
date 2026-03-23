@@ -3,7 +3,6 @@ import { Video, BarChart3, Zap, Map } from 'lucide-react';
 import { InlineMonitoring } from './InlineMonitoring';
 import { ProductionMetricsToday } from './ProductionMetricsToday';
 import { PredictiveAlerts } from './PredictiveAlerts';
-import { InlineMapView } from './InlineMapView';
 
 interface Alert {
   id: string;
@@ -31,7 +30,6 @@ const sections = [
   { id: 'monitoring', label: 'Video Monitoring', icon: Video     },
   { id: 'production', label: 'Production',       icon: BarChart3 },
   { id: 'alerts',     label: 'Predictive Alerts', icon: Zap      },
-  { id: 'map',        label: 'Site Map',          icon: Map       },
 ];
 
 export function HereAndNow({
@@ -42,13 +40,11 @@ export function HereAndNow({
   const monitoringRef = useRef<HTMLDivElement>(null);
   const productionRef = useRef<HTMLDivElement>(null);
   const alertsRef     = useRef<HTMLDivElement>(null);
-  const mapRef        = useRef<HTMLDivElement>(null);
 
   const sectionRefs: Record<string, React.RefObject<HTMLDivElement | null>> = {
     monitoring: monitoringRef,
     production: productionRef,
     alerts: alertsRef,
-    map: mapRef,
   };
 
   useEffect(() => {
@@ -126,14 +122,6 @@ export function HereAndNow({
         {/* 3. Predictive Alerts */}
         <div ref={alertsRef} className="scroll-mt-16">
           <PredictiveAlerts />
-        </div>
-
-        {/* 4. Site Map */}
-        <div ref={mapRef} className="scroll-mt-16">
-          <InlineMapView
-            assetName={assetName}
-            location={assetLocation}
-          />
         </div>
 
       </div>
