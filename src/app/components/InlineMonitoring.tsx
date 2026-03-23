@@ -3,6 +3,7 @@ import { LiveVideoFeed } from './LiveVideoFeed';
 import { TimelineSeeker } from './TimelineSeeker';
 import { GlobalActionsToolbar } from './GlobalActionsToolbar';
 import { useState } from 'react';
+import { InlineMapView } from './InlineMapView';
 
 interface Alert {
   id: string;
@@ -83,6 +84,7 @@ export function InlineMonitoring({
   const [summaryCopied, setSummaryCopied] = useState(false);
   const [showActivityInput, setShowActivityInput] = useState(false);
   const [activityText, setActivityText] = useState('');
+  const [primaryView, setPrimaryView] = useState<'video' | 'map'>('video');
 
   const handleAddBookmark = (time: number) => {
     const newBookmark: TimelineBookmark = {
@@ -150,86 +152,99 @@ export function InlineMonitoring({
       </div>
 
       <div className="flex flex-col">
-        {/* Video Container */}
+        {/* Main View Container */}
         <div className="relative h-[500px] bg-[#1a1a1a] overflow-hidden">
-          {/* Simulated video feed with construction scene */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="absolute inset-0 bg-gradient-to-br from-[#2a2a2a] via-[#3a3a3a] to-[#1a1a1a]">
-              {/* Dirt/ground texture simulation */}
-              <div className="absolute inset-0 opacity-30" style={{
-                backgroundImage: `radial-gradient(circle at 20% 50%, rgba(80, 80, 80, 0.4) 0%, transparent 50%),
-                                 radial-gradient(circle at 80% 30%, rgba(100, 100, 100, 0.3) 0%, transparent 50%),
-                                 radial-gradient(circle at 40% 80%, rgba(60, 60, 60, 0.4) 0%, transparent 50%)`
-              }}></div>
-            </div>
-            
-            {/* Bucket/blade representation */}
-            <div className="absolute bottom-1/4 left-1/3 w-48 h-32 bg-[#707070] border-4 border-[#505050] rounded-lg shadow-2xl transform rotate-[-12deg]">
-              <div className="absolute inset-2 border-2 border-[#505050]/50"></div>
-            </div>
-
-            {/* AI detection indicators overlay */}
-            <div className="absolute top-1/2 left-1/4 w-32 h-40 border-2 border-white/20 rounded-lg">
-              <div className="absolute -top-6 left-0 px-2 py-0.5 bg-white/20 text-white rounded text-[10px]">98.2% Person Detected</div>
-            </div>
-
-            {/* Timestamp overlay */}
-            <div className="absolute top-4 left-4 px-3 py-1 bg-black/60 rounded text-xs text-white backdrop-blur-sm">
-              {new Date().toLocaleTimeString()}
-            </div>
-
-            {/* AI Status */}
-            <div className="absolute bottom-4 left-4 px-3 py-1 bg-muted-foreground/80 rounded flex items-center gap-2 text-white text-xs">
-              <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></div>
-              AI Active
-            </div>
-
-            {/* Contextual Toolbar - Inside Video */}
-            <GlobalActionsToolbar 
-              variant="video"
-              onVerifyPlan={onVerifyPlan}
-              onShowMap={onShowMap}
-              onShowVideo={onShowVideo}
-              onAlert={onAlert}
-            />
-
-            {/* Integrated Map Overlay - Bottom Right */}
-            <div 
-              className="absolute bottom-3 right-3 w-40 aspect-[4/3] bg-[#b8e5c8] rounded-lg border-2 border-white shadow-2xl overflow-hidden cursor-pointer group/map hover:scale-105 transition-transform duration-300"
-              onClick={onShowMap}
-            >
-              {/* Grid Pattern */}
-              <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.05)_1px,_transparent_1px),_linear-gradient(90deg,rgba(0,0,0,0.05)_1px,_transparent_1px)] bg-[length:10px_10px]"></div>
+          {primaryView === 'video' ? (
+            /* Video View */
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="absolute inset-0 bg-gradient-to-br from-[#2a2a2a] via-[#3a3a3a] to-[#1a1a1a]">
+                <div className="absolute inset-0 opacity-30" style={{
+                  backgroundImage: `radial-gradient(circle at 20% 50%, rgba(80, 80, 80, 0.4) 0%, transparent 50%),
+                                   radial-gradient(circle at 80% 30%, rgba(100, 100, 100, 0.3) 0%, transparent 50%),
+                                   radial-gradient(circle at 40% 80%, rgba(60, 60, 60, 0.4) 0%, transparent 50%)`
+                }}></div>
+              </div>
               
-              {/* Central Roads (Simple Lines) */}
-              <div className="absolute top-1/2 w-full h-8 bg-black/5 -translate-y-1/2 flex items-center justify-center">
-                <div className="w-full h-px bg-white/20"></div>
-              </div>
-              <div className="absolute left-1/2 h-full w-8 bg-black/5 -translate-x-1/2 flex items-center justify-center">
-                <div className="h-full w-px bg-white/20"></div>
+              <div className="absolute bottom-1/4 left-1/3 w-48 h-32 bg-[#707070] border-4 border-[#505050] rounded-lg shadow-2xl transform rotate-[-12deg]">
+                <div className="absolute inset-2 border-2 border-[#505050]/50"></div>
               </div>
 
-              {/* Location Pin */}
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-                <div className="relative">
-                  <div className="absolute -inset-2 bg-black/10 rounded-full blur-md animate-pulse"></div>
+              <div className="absolute top-1/2 left-1/4 w-32 h-40 border-2 border-white/20 rounded-lg">
+                <div className="absolute -top-6 left-0 px-2 py-0.5 bg-white/20 text-white rounded text-[10px]">98.2% Person Detected</div>
+              </div>
+
+              <div className="absolute top-4 left-4 px-3 py-1 bg-black/60 rounded text-xs text-white backdrop-blur-sm">
+                {new Date().toLocaleTimeString()}
+              </div>
+
+              <div className="absolute bottom-4 left-4 px-3 py-1 bg-muted-foreground/80 rounded flex items-center gap-2 text-white text-xs">
+                <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></div>
+                AI Active
+              </div>
+
+              {/* Integrated Map Floater */}
+              <div 
+                className="absolute bottom-3 right-3 w-40 aspect-[4/3] bg-[#b8e5c8] rounded-lg border-2 border-white shadow-2xl overflow-hidden cursor-pointer group/map hover:scale-105 transition-transform duration-300 z-30"
+                onClick={() => setPrimaryView('map')}
+              >
+                <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.05)_1px,_transparent_1px),_linear-gradient(90deg,rgba(0,0,0,0.05)_1px,_transparent_1px)] bg-[length:10px_10px]"></div>
+                <div className="absolute top-1/2 w-full h-8 bg-black/5 -translate-y-1/2 flex items-center justify-center">
+                  <div className="w-full h-px bg-white/20"></div>
+                </div>
+                <div className="absolute left-1/2 h-full w-8 bg-black/5 -translate-x-1/2 flex items-center justify-center">
+                  <div className="h-full w-px bg-white/20"></div>
+                </div>
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
                   <div className="relative bg-white rounded-full p-1 shadow-md border border-black/10">
                     <div className="w-2.5 h-2.5 bg-black rounded-full"></div>
                   </div>
                 </div>
-              </div>
-
-              {/* Expand/Open Icon inside Map */}
-              <div className="absolute bottom-1.5 right-1.5 w-7 h-7 bg-white/90 backdrop-blur-sm rounded flex items-center justify-center text-black shadow-lg hover:bg-white transition-colors">
-                <Maximize2 className="w-4 h-4" />
-              </div>
-              
-              {/* Tooltip on Hover */}
-              <div className="absolute inset-x-0 bottom-0 py-1 bg-black/60 backdrop-blur-sm transform translate-y-full group-hover/map:translate-y-0 transition-transform duration-300">
-                <p className="text-[10px] text-white text-center font-bold tracking-tight">OPEN SITE MAP</p>
+                <div className="absolute bottom-1.5 right-1.5 w-7 h-7 bg-white/90 backdrop-blur-sm rounded flex items-center justify-center text-black shadow-lg">
+                  <Maximize2 className="w-4 h-4" />
+                </div>
+                <div className="absolute inset-x-0 bottom-0 py-1 bg-black/60 backdrop-blur-sm transform translate-y-full group-hover/map:translate-y-0 transition-transform duration-300">
+                  <p className="text-[10px] text-white text-center font-bold tracking-tight uppercase">Open Site Map</p>
+                </div>
               </div>
             </div>
-          </div>
+          ) : (
+            /* Map View */
+            <div className="absolute inset-0 bg-background">
+              <div className="h-full w-full">
+                <InlineMapView 
+                  assetName={assetName} 
+                  location={location}
+                  className="h-full"
+                />
+              </div>
+
+              {/* Video Floater */}
+              <div 
+                className="absolute bottom-3 right-3 w-40 aspect-[4/3] bg-[#1a1a1a] rounded-lg border-2 border-white shadow-2xl overflow-hidden cursor-pointer group/video hover:scale-105 transition-transform duration-300 z-30"
+                onClick={() => setPrimaryView('video')}
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-[#2a2a2a] via-[#3a3a3a] to-[#1a1a1a] opacity-80"></div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Camera className="w-8 h-8 text-white/40" />
+                </div>
+                <div className="absolute bottom-1.5 right-1.5 w-7 h-7 bg-white/90 backdrop-blur-sm rounded flex items-center justify-center text-black shadow-lg">
+                  <Maximize2 className="w-4 h-4" />
+                </div>
+                <div className="absolute inset-x-0 bottom-0 py-1 bg-black/60 backdrop-blur-sm transform translate-y-full group-hover/video:translate-y-0 transition-transform duration-300">
+                  <p className="text-[10px] text-white text-center font-bold tracking-tight uppercase">Open Video Feed</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Contextual Toolbar - Overlays both views */}
+          <GlobalActionsToolbar 
+            variant="video"
+            onVerifyPlan={onVerifyPlan}
+            onShowMap={onShowMap}
+            onShowVideo={onShowVideo}
+            onAlert={onAlert}
+          />
 
           {/* Floating Camera Selector - Top Right */}
           <div className="absolute top-4 right-4">

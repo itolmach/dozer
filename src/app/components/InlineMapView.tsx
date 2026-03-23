@@ -25,6 +25,7 @@ import {
 interface InlineMapViewProps {
   assetName?: string;
   isHistorical?: boolean;
+  className?: string;
   location?: {
     lat: number;
     lng: number;
@@ -32,7 +33,7 @@ interface InlineMapViewProps {
   };
 }
 
-export function InlineMapView({ assetName, location, isHistorical = false }: InlineMapViewProps) {
+export function InlineMapView({ assetName, location, isHistorical = false, className = "h-[600px]" }: InlineMapViewProps) {
   // Reuse the logic from UnifiedMapView but simplified for inline use
   const [mapLayers, setMapLayers] = useState([
     { id: 'cycles', name: 'Production Cycles', enabled: true, icon: <Activity className="w-4 h-4" />, color: 'var(--primary)' },
@@ -56,7 +57,7 @@ export function InlineMapView({ assetName, location, isHistorical = false }: Inl
   const isLayerEnabled = (layerId: string) => mapLayers.find(l => l.id === layerId)?.enabled;
 
   return (
-    <div className="bg-card rounded-3xl border border-border overflow-hidden shadow-sm flex flex-col h-[600px]">
+    <div className={`bg-card rounded-3xl border border-border overflow-hidden shadow-sm flex flex-col ${className}`}>
       {/* Header */}
       <div className="p-6 border-b border-border flex items-center justify-between bg-muted/20">
         <div className="flex items-center gap-3">
