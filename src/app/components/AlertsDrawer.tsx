@@ -1,5 +1,6 @@
 import { X, AlertTriangle, MessageSquare, Radio, CheckCircle2, Clock, Video, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
+import { MaintenanceAlerts } from './MaintenanceAlerts';
 
 interface Alert {
   id: string;
@@ -98,6 +99,12 @@ export function AlertsDrawer({
         flex-1 overflow-y-auto p-6 space-y-4 transition-all duration-300
         ${isCollapsed ? 'opacity-0 pointer-events-none' : 'opacity-100'}
       `}>
+        {!isCollapsed && (
+          <div className="mb-6 pb-6 border-b-2 border-border/50">
+            <MaintenanceAlerts />
+          </div>
+        )}
+
         {alerts.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <CheckCircle2 className="w-16 h-16 text-muted-foreground mb-4" />

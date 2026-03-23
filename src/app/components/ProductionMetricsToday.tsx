@@ -16,7 +16,6 @@ import {
   CheckCircle
 } from 'lucide-react';
 import { DowntimeAttributionModal } from './DowntimeAttributionModal';
-import { MaintenanceAlerts } from './MaintenanceAlerts';
 
 interface IdleTimeSegment {
   id: string;
@@ -235,11 +234,7 @@ export function ProductionMetricsToday() {
           </div>
         )}
 
-        {/* Dual-Tier Alert System - Consourced from MaintenanceAlerts */}
-        <div className="space-y-4">
-          <MaintenanceAlerts />
         </div>
-      </div>
 
       {/* Downtime Attribution Modal */}
       {showAttributionModal && selectedIdleSegment && (
