@@ -17,7 +17,8 @@ import {
 } from 'lucide-react';
 
 interface DailyPrepFlowProps {
-  onClose: () => void;
+  onClose?: () => void;
+  inline?: boolean;
   assetName: string;
   assetId: string;
 }
@@ -49,7 +50,7 @@ interface SubCode {
   parentCodeName: string;
 }
 
-export function DailyPrepFlow({ onClose, assetName, assetId }: DailyPrepFlowProps) {
+export function DailyPrepFlow({ onClose, inline, assetName, assetId }: DailyPrepFlowProps) {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [shiftBlocks, setShiftBlocks] = useState<ShiftBlock[]>([
     {
@@ -196,9 +197,12 @@ export function DailyPrepFlow({ onClose, assetName, assetId }: DailyPrepFlowProp
     const hours = endH - startH + (endM - startM) / 60;
     return sum + hours;
   }, 0);
+  const outerClass = inline 
+    ? "bg-card rounded-[var(--radius-card)] border-2 border-border flex flex-col" 
+    : "fixed inset-0 z-50 bg-background flex flex-col";
 
   return (
-    <div className="fixed inset-0 z-50 bg-background flex flex-col">
+    <div className={outerClass}>
       {/* Header */}
       <div className="h-[80px] bg-card border-b-4 border-primary px-8 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-4">
@@ -228,7 +232,7 @@ export function DailyPrepFlow({ onClose, assetName, assetId }: DailyPrepFlowProp
           <button 
             onClick={() => {
               console.log('Saving shift allocation:', { shiftBlocks, repeatDays });
-              onClose();
+              if (onClose) onClose();
             }}
             className="min-w-[60px] min-h-[60px] px-6 py-3 rounded-[var(--radius-button)] bg-primary text-white hover:opacity-90 transition-opacity flex items-center gap-2"
             disabled={unresolvedCount > 0}
@@ -239,19 +243,21 @@ export function DailyPrepFlow({ onClose, assetName, assetId }: DailyPrepFlowProp
             </span>
           </button>
 
-          {/* Close */}
-          <button
-            onClick={onClose}
-            className="min-w-[60px] min-h-[60px] rounded-full bg-destructive/10 hover:bg-destructive/20 transition-colors flex items-center justify-center"
-            title="Close Daily Prep"
-          >
-            <X className="w-6 h-6 text-destructive" />
-          </button>
+          {/* Close (modal only) */}
+          {!inline && onClose && (
+            <button
+              onClick={onClose}
+              className="min-w-[60px] min-h-[60px] rounded-full bg-destructive/10 hover:bg-destructive/20 transition-colors flex items-center justify-center"
+              title="Close Daily Prep"
+            >
+              <X className="w-6 h-6 text-destructive" />
+            </button>
+          )}
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-y-auto bg-background p-8">
+      <div className={inline ? "p-6" : "flex-1 overflow-y-auto bg-background p-8"}>
         <div className="max-w-[1400px] mx-auto grid grid-cols-3 gap-6">
           {/* Left Column - Shift Allocation */}
           <div className="col-span-2 space-y-6">

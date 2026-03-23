@@ -13,15 +13,11 @@ import { SplitScreenCADView } from './components/SplitScreenCADView';
 import { UnifiedMapView } from './components/UnifiedMapView';
 import { ExpandedMonitoring } from './components/ExpandedMonitoring';
 import { AssetDiagnostics } from './components/AssetDiagnostics';
-import { ReportExport } from './components/ReportExport';
-import { DailyPrepFlow } from './components/DailyPrepFlow';
+import { Sidebar } from './components/Sidebar';
 import { SafetyEscalationModal } from './components/SafetyEscalationModal';
-import { ProductionMetricsToday } from './components/ProductionMetricsToday';
-import { InlineMonitoring } from './components/InlineMonitoring';
+import { HereAndNow } from './components/HereAndNow';
 import { GlobalActionsToolbar } from './components/GlobalActionsToolbar';
 import { FloatingMonitor } from './components/FloatingMonitor';
-import { Sidebar } from './components/Sidebar';
-import { InlineMapView } from './components/InlineMapView';
 import { Radio, StopCircle, MessageSquare, AlertCircle, Wrench, MapPin as MapPinIcon, Pencil, X, LayoutDashboard,
   CheckCircle2,
   AlertTriangle,
@@ -44,7 +40,6 @@ export default function App() {
   const [showMapView, setShowMapView] = useState(false);
   const [showDiagnostics, setShowDiagnostics] = useState(false);
   const [showReports, setShowReports] = useState(false);
-  const [showDailyPrep, setShowDailyPrep] = useState(false);
   const [showSafetyEscalation, setShowSafetyEscalation] = useState(false);
 
   const monitorRef = useRef<HTMLDivElement>(null);
@@ -213,8 +208,14 @@ export default function App() {
             onExpandVideo={handleExpandVideo}
             onOpenSettings={() => setShowAssetSettings(true)}
             onOpenDiagnostics={() => setShowDiagnostics(true)}
-            onOpenReports={() => setShowReports(true)}
-            onOpenDailyPrep={() => setShowDailyPrep(true)}
+            onOpenReports={() => {
+              setActiveView('trends');
+              // We'll need a way to scroll to reports in TrendsComparison too if desired
+            }}
+            onOpenDailyPrep={() => {
+              setActiveView('historical');
+              // Note: scrollToSection(dailyprepRef) won't work directly here because it's inside HistoricalAnalysis
+            }}
             rentalRate={{
               activeRate: 285.00,
               activeRateSource: 'ERP',
@@ -238,81 +239,30 @@ export default function App() {
             <ViewToggle 
               activeView={activeView} 
               onViewChange={setActiveView}
+              onOpenCAD={() => setShowSplitScreenCAD(true)}
+              onOpenMap={() => setShowMapView(true)}
+              onOpenVideo={() => setIsMonitoringExpanded(true)}
             />
           </div>
         )}
 
         {/* Main Content Area - Scrollable */}
         <div className="flex-1 overflow-y-auto custom-scrollbar">
-          {/* Main Content - Live View (Workflow 1) */}
+          {/* Main Content - Live View (Here & Now) */}
           {activeView === 'live' && (
             <div className="p-8">
               <div className="max-w-[1400px] mx-auto">
-
-
-                {/* Section Header */}
-                <div className="mb-6 flex items-start justify-between">
-                  <div>
-                    <h2 className="text-foreground mb-2">How are we doing today?</h2>
-                    <p className="text-muted-foreground">Predictive risk modeling and real-time safety monitoring</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <button 
-                      onClick={() => scrollToSection(planRef)}
-                      className="w-10 h-10 flex items-center justify-center rounded-xl bg-muted/50 text-foreground hover:bg-muted/80 transition-all duration-300 shadow-sm"
-                      title="Scroll to Cut/Fill Analysis"
-                    >
-                      <DraftingCompass className="w-5 h-5 stroke-[1.5]" />
-                    </button>
-                    <button 
-                      onClick={() => scrollToSection(mapRef)}
-                      className="w-10 h-10 flex items-center justify-center rounded-xl bg-muted/50 text-foreground hover:bg-muted/80 transition-all duration-300 shadow-sm"
-                      title="Scroll to Site Map"
-                    >
-                      <Map className="w-5 h-5 stroke-[1.5]" />
-                    </button>
-                    <button 
-                      onClick={() => scrollToSection(monitorRef)}
-                      className="w-10 h-10 flex items-center justify-center rounded-xl bg-muted/50 text-foreground hover:bg-muted/80 transition-all duration-300 shadow-sm"
-                      title="Scroll to Video Monitoring"
-                    >
-                      <Video className="w-5 h-5 stroke-[1.5]" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Inline Monitoring View (Workflow 4) */}
-                <div className="mb-6" ref={monitorRef}>
-                  <InlineMonitoring 
-                    location={assetData.location}
-                    assetName={assetData.name}
-                    alerts={alerts}
-                    onRadioOperator={handleRadioOperator}
-                    onVerifyPlan={() => setShowSplitScreenCAD(true)}
-                    onShowMap={() => setShowMapView(true)}
-                    onShowVideo={() => setIsMonitoringExpanded(true)}
-                    onAlert={() => setShowSafetyEscalation(true)}
-                  />
-                </div>
-
-
-                {/* Production Metrics - Today */}
-                <div className="mb-6">
-                  <ProductionMetricsToday />
-                </div>
-
-                {/* Predictive Alerts - Workflow 3 */}
-                <div className="mb-6">
-                  <PredictiveAlerts />
-                </div>
-
-                {/* Safety Strategy Map Module */}
-                <div className="mb-6" ref={mapRef}>
-                  <InlineMapView 
-                    assetName={assetData.name}
-                    location={assetData.location}
-                  />
-                </div>
+                <HereAndNow
+                  monitorRef={monitorRef}
+                  assetName={assetData.name}
+                  assetLocation={assetData.location}
+                  alerts={alerts}
+                  onRadioOperator={handleRadioOperator}
+                  onVerifyPlan={() => setShowSplitScreenCAD(true)}
+                  onShowMap={() => setShowMapView(true)}
+                  onShowVideo={() => setIsMonitoringExpanded(true)}
+                  onAlert={() => setShowSafetyEscalation(true)}
+                />
               </div>
             </div>
           )}
@@ -352,7 +302,7 @@ export default function App() {
           {activeView === 'trends' && (
             <div className="p-8">
               <div className="max-w-[1400px] mx-auto">
-                <TrendsComparison assetName={assetData.name} />
+                <TrendsComparison assetName={assetData.name} assetModel={assetData.model} />
               </div>
             </div>
           )}
@@ -405,6 +355,24 @@ export default function App() {
         />
       )}
 
+      {/* Global PiP / Floating Monitor */}
+      {!isMonitorInView && activeView === 'live' && (
+        <FloatingMonitor 
+          onExpand={() => setIsMonitoringExpanded(true)}
+          assetName={assetData.name}
+        />
+      )}
+
+      {/* Global Actions Toolbar */}
+      {activeView === 'live' && (
+        <GlobalActionsToolbar 
+          onVerifyPlan={() => setShowSplitScreenCAD(true)}
+          onShowMap={() => setShowMapView(true)}
+          onShowVideo={() => setIsMonitoringExpanded(true)}
+          onAlert={() => setShowSafetyEscalation(true)}
+        />
+      )}
+
       {/* Asset Settings Panel (with Equipment Rate Reconciliation) */}
       {showAssetSettings && (
         <AssetSettingsPanel
@@ -450,26 +418,7 @@ export default function App() {
         />
       )}
 
-      {/* Report Export Modal */}
-      {showReports && (
-        <ReportExport
-          onClose={() => setShowReports(false)}
-          assetName={assetData.name}
-          assetModel={assetData.model}
-          projectName="Interstate 405 Expansion - Section 7B"
-          contractorName="Granite Construction Company"
-          ownerName="California Department of Transportation (Caltrans)"
-        />
-      )}
 
-      {/* Daily Prep Flow Modal */}
-      {showDailyPrep && (
-        <DailyPrepFlow
-          onClose={() => setShowDailyPrep(false)}
-          assetName={assetData.name}
-          assetId="JD-650-001"
-        />
-      )}
 
       {/* Safety Escalation Modal */}
       {showSafetyEscalation && (

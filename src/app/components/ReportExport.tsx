@@ -35,7 +35,8 @@ import { CubicYardsReconciliation } from './CubicYardsReconciliation';
 import { ProjectSystemicHealth } from './ProjectSystemicHealth';
 
 interface ReportExportProps {
-  onClose: () => void;
+  onClose?: () => void;
+  inline?: boolean;
   assetName: string;
   assetModel: string;
   projectName: string;
@@ -61,6 +62,7 @@ interface CostCodeData {
 
 export function ReportExport({ 
   onClose, 
+  inline,
   assetName, 
   assetModel,
   projectName,
@@ -169,8 +171,12 @@ export function ReportExport({
     alert(`${reportType === 'progress' ? 'Progress Payment' : 'Post-Mortem'} report exported as ${selectedFormat.toUpperCase()}`);
   };
 
+  const outerClass = inline
+    ? 'bg-card rounded-[var(--radius-card)] border-2 border-border flex flex-col'
+    : 'fixed inset-0 z-50 bg-background flex flex-col';
+
   return (
-    <div className="fixed inset-0 z-50 bg-background flex flex-col">
+    <div className={outerClass}>
       {/* Header */}
       <div className="h-[80px] bg-card border-b-4 border-primary px-8 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-4">
@@ -223,19 +229,21 @@ export function ReportExport({
             </span>
           </button>
 
-          {/* Close */}
-          <button
-            onClick={onClose}
-            className="min-w-[60px] min-h-[60px] rounded-full bg-destructive/10 hover:bg-destructive/20 transition-colors flex items-center justify-center"
-            title="Close Reports"
-          >
-            <X className="w-6 h-6 text-destructive" />
-          </button>
+          {/* Close (modal only) */}
+          {!inline && onClose && (
+            <button
+              onClick={onClose}
+              className="min-w-[60px] min-h-[60px] rounded-full bg-destructive/10 hover:bg-destructive/20 transition-colors flex items-center justify-center"
+              title="Close Reports"
+            >
+              <X className="w-6 h-6 text-destructive" />
+            </button>
+          )}
         </div>
       </div>
 
       {/* Main Content - Report Preview */}
-      <div className="flex-1 overflow-y-auto bg-background p-8">
+      <div className={inline ? 'p-6 bg-background' : 'flex-1 overflow-y-auto bg-background p-8'}>
         <div className="max-w-[1200px] mx-auto">
           {/* Report Document Container */}
           <div className="bg-card rounded-[var(--radius-card)] border-2 border-border shadow-[var(--elevation-lg)] overflow-hidden">
